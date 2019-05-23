@@ -3,7 +3,9 @@ package com.mcmoddev.lib.client.registrations;
 import javax.annotation.Nonnull;
 
 import com.mcmoddev.lib.client.renderer.FluidStateMapper;
+import com.mcmoddev.lib.client.renderer.RenderCustomGolem;
 import com.mcmoddev.lib.data.SharedStrings;
+import com.mcmoddev.lib.entity.EntityCustomGolem;
 import com.mcmoddev.lib.init.Blocks;
 import com.mcmoddev.lib.init.Items;
 
@@ -17,11 +19,15 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.fluids.Fluid;
 import net.minecraftforge.fluids.FluidRegistry;
+import net.minecraftforge.fml.client.registry.IRenderFactory;
+import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 public class RegistrationHelper {
+	
+	private static final IRenderFactory<EntityCustomGolem> FACTORY_GOLEM = RenderCustomGolem::new;
 
 	/**
 	 *
@@ -119,6 +125,12 @@ public class RegistrationHelper {
 
 		ModelLoader.setCustomModelResourceLocation(item, 0,
 				new ModelResourceLocation(resourceLocation, "inventory"));
+	}
+	
+	@SideOnly(Side.CLIENT)
+	public static void registerGolemRender(@Nonnull Class<? extends EntityCustomGolem> cls) {
+		// TODO safety checks?
+		RenderingRegistry.registerEntityRenderingHandler(cls, FACTORY_GOLEM);
 	}
 
 	private RegistrationHelper() {
