@@ -1,5 +1,6 @@
 package com.mcmoddev.lib.entity;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.mcmoddev.lib.data.Names;
@@ -17,6 +18,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.monster.EntityIronGolem;
 import net.minecraft.init.MobEffects;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
@@ -39,8 +41,10 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	
 	protected static final DataParameter<String> MATERIAL = EntityDataManager.<String>createKey(EntityCustomGolem.class, DataSerializers.STRING);
 	private static final String KEY_MATERIAL = "MMDMaterial";
+	private static final byte KEY_ATTACK = (byte)24;
 	
 	private GolemContainer container = GolemContainer.EMPTY;
+	private int attackTimer2;
 
 	public EntityCustomGolem(final World world) {
 		super(world);
@@ -49,9 +53,31 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	/**
 	 * ALWAYS CALL THIS WHEN YOU FIRST MAKE THE GOLEM IN-WORLD
 	 **/
-	public EntityCustomGolem setContainer(final GolemContainer containerIn) {
-		this.updateContainerStats(containerIn);
+	public EntityCustomGolem setMMDMaterial(@Nonnull final MMDMaterial mat) {
+		this.getDataManager().set(MATERIAL, mat.getName());
 		return this;
+	}
+	
+
+	@Override
+	public void notifyDataManagerChange(final DataParameter<?> key) {
+		super.notifyDataManagerChange(key);
+		if(MATERIAL.equals(key)) {
+			// make sure the material exists
+			final String materialName = this.getDataManager().get(MATERIAL);
+			if(null == materialName || !Materials.hasMaterial(materialName)) {
+				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - invalid material name was provided!");
+				return;
+			}
+			// make sure a container is registered for this material
+			final GolemContainer cont = Entities.getContainer(Materials.getMaterialByName(materialName));
+			if(null == cont) {
+				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no container was found for material with name '%s'", materialName);
+				return;
+			}
+			// actually use the container to update golem stats
+			this.updateContainerStats(cont);
+		}
 	}
 
 	/**
@@ -87,6 +113,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 
 	@Override
 	protected void applyEntityAttributes() {
+		this.getAttributeMap().registerAttribute(SharedMonsterAttributes.ATTACK_DAMAGE);
 		super.applyEntityAttributes();
 	}
 
@@ -97,7 +124,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	}
 
 	@Override
-	protected void collideWithEntity(Entity entityIn) {
+	protected void collideWithEntity(final Entity entityIn) {
 		super.collideWithEntity(entityIn);
 	}
 
@@ -105,10 +132,13 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	public void onLivingUpdate() {
 		// TODO hook for custom living-update behavior
 		super.onLivingUpdate();
+		if (this.attackTimer2 > 0) {
+			--this.attackTimer2;
+		}
 	}
 
 	@Override
-	public boolean canAttackClass(Class<? extends EntityLivingBase> cls) {
+	public boolean canAttackClass(final Class<? extends EntityLivingBase> cls) {
 		// TODO should we allow custom golems to attack creepers? Only purpose of this method...
 		return super.canAttackClass(cls);
 	}
@@ -119,28 +149,44 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 //	    }
 
 	@Override
-	public void writeEntityToNBT(NBTTagCompound compound) {
+	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
 		// TODO safety checks
 		compound.setString(KEY_MATERIAL, this.container.getMMDMaterial().getName());
 	}
 	
 	@Override
-	public void readEntityFromNBT(NBTTagCompound compound) {
+	public void readEntityFromNBT(final NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
 		// TODO safety checks
-		this.container = Entities.getContainer(Materials.getMaterialByName(compound.getString(KEY_MATERIAL)));
+		this.setMMDMaterial(Materials.getMaterialByName(compound.getString(KEY_MATERIAL)));
 	}
 
 	@Override
-	public boolean attackEntityAsMob(Entity entityIn) {
+	public boolean attackEntityAsMob(final Entity entityIn) {
 		// TODO hook for custom attack behavior
-		return super.attackEntityAsMob(entityIn);
+		this.attackTimer2 = 10;
+		this.world.setEntityState(this, KEY_ATTACK);
+		final float baseAttack = (float)this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).getAttributeValue();
+		boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 
+				baseAttack + this.rand.nextInt(Math.max(1, (int)(baseAttack * 2.0F))));
+
+		if (flag) {
+			entityIn.motionY += 0.4000000059604645D;
+			this.applyEnchantments(this, entityIn);
+		}
+
+		this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
+		return flag;
 	}
 
 	@SideOnly(Side.CLIENT)
 	@Override
-	public void handleStatusUpdate(byte id) {
+	public void handleStatusUpdate(final byte id) {
+		if (id == KEY_ATTACK) {
+			this.attackTimer2 = 10;
+			this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
+		}
 		super.handleStatusUpdate(id);
 	}
 
@@ -149,19 +195,19 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 		return super.getVillage();
 	}
 
-	@SideOnly(Side.CLIENT)
 	@Override
+	@SideOnly(Side.CLIENT)
 	public int getAttackTimer() {
-		return super.getAttackTimer();
+		return attackTimer2;
 	}
 
 	@Override
-	public void setHoldingRose(boolean holdingRose) {
+	public void setHoldingRose(final boolean holdingRose) {
 		super.setHoldingRose(holdingRose);
 	}
 
 	@Override
-	protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
+	protected SoundEvent getHurtSound(final DamageSource damageSourceIn) {
 		return super.getHurtSound(damageSourceIn);
 	}
 
@@ -171,7 +217,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	}
 
 	@Override
-	protected void playStepSound(BlockPos pos, Block blockIn) {
+	protected void playStepSound(final BlockPos pos, final Block blockIn) {
 		super.playStepSound(pos, blockIn);
 	}
 
@@ -193,12 +239,12 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	}
 
 	@Override
-	public void setPlayerCreated(boolean playerCreated) {
+	public void setPlayerCreated(final boolean playerCreated) {
 		super.setPlayerCreated(playerCreated);
 	}
 
 	@Override
-	public void onDeath(DamageSource cause) {
+	public void onDeath(final DamageSource cause) {
 		// TODO hook here for special behavior
 		super.onDeath(cause);
 	}

@@ -5,6 +5,7 @@ import com.mcmoddev.lib.material.IMMDObject;
 import com.mcmoddev.lib.material.MMDMaterial;
 
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.registries.IForgeRegistryEntry;
 
 /**
  * This class contains all of the information used to customize
@@ -13,7 +14,7 @@ import net.minecraft.util.ResourceLocation;
  * not be modified at any point.
  * @author skyjay1
  */
-public class GolemContainer implements IMMDObject {
+public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContainer> implements IMMDObject {
 	
 	public static final GolemContainer EMPTY = new GolemContainer.Builder(Materials.EMPTY).build();
 	
@@ -29,7 +30,7 @@ public class GolemContainer implements IMMDObject {
 	
 	private final float[] colorRGBA = new float[4];
 	
-	public GolemContainer(final MMDMaterial materialIn, final ResourceLocation textureIn,
+	private GolemContainer(final MMDMaterial materialIn, final ResourceLocation textureIn,
 			final boolean hasTintIn, final boolean fallDamageIn,
 			final double healthIn, final double attackIn, final double walkSpeedIn, final double knockbackResistIn) {
 		this.material = materialIn;
@@ -69,7 +70,7 @@ public class GolemContainer implements IMMDObject {
 	 * Builder class for {@link GolemContainer}. Uses default values
 	 * for important stats for the custom golem:  material, texture,
 	 * color, fall damage, health, attack, movement speed, and
-	 * knockback resistance.
+	 * knockback resistance are included.
 	 * @author skyjay1
 	 */
 	public static class Builder {
