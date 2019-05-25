@@ -1,6 +1,5 @@
 package com.mcmoddev.lib.entity;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.mcmoddev.lib.data.Names;
@@ -48,21 +47,12 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	private static final String KEY_CONTAINER_NAME = "ContainerName";
 	private static final byte KEY_ATTACK = (byte)24;
 	
-	private GolemContainer container;
+	private GolemContainer container = GolemContainer.EMPTY_GOLEM_CONTAINER;
 	private int attackTimer2;
 
 	public EntityCustomGolem(final World world) {
 		super(world);
 	}
-	
-	/**
-	 * ALWAYS CALL THIS WHEN YOU FIRST MAKE THE GOLEM IN-WORLD
-	 **/
-	public EntityCustomGolem setMMDMaterial(@Nonnull final MMDMaterial mat) {
-		
-		return this;
-	}
-	
 
 	@Override
 	public void notifyDataManagerChange(final DataParameter<?> key) {
@@ -70,10 +60,10 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		if(CONTAINER_NAME.equals(key)) {
 			final String containerName = this.getDataManager().get(CONTAINER_NAME);
 			// make sure a container is registered for this material
-			final EntityContainer cont = Entities.getEntityContainer(containerName);
-			if(cont instanceof GolemContainer) {
+			final GolemContainer cont = Entities.getEntityContainer(containerName);
+			if(cont != null) {
 				// actually use the container to update golem stats
-				this.updateContainerStats((GolemContainer)cont);
+				this.updateContainerStats(cont);
 			} else {
 				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no GolemContainer was found with name '%s'", containerName);
 			}
@@ -102,6 +92,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	protected void entityInit() {
 		super.entityInit();
+		this.dataManager.register(CONTAINER_NAME, Entities.makeGolemKey(Materials.EMPTY));
 	}
 
 	@Override
@@ -156,16 +147,19 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
-		// TODO safety checks
-		compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+		if(this.getContainer() != null) {
+			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+		}
 		EntityHelpers.fireOnWriteNBT(this, compound);
 	}
 	
 	@Override
 	public void readEntityFromNBT(final NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
-		final String name = compound.getString(KEY_CONTAINER_NAME);
-		this.setContainer(Entities.getEntityContainer(name));
+		if(compound.hasKey(KEY_CONTAINER_NAME)) {
+			final String name = compound.getString(KEY_CONTAINER_NAME);
+			this.setContainer(Entities.getEntityContainer(name));
+		}
 		EntityHelpers.fireOnReadNBT(this, compound);
 	}
 
@@ -260,7 +254,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	
 	@Override
 	public void fall(float distance, float damageMultiplier) {
-		if (this.container.hasFallDamage()) {
+		if (this.getContainer() != null && this.getContainer().hasFallDamage()) {
 			// COPY PASTED FROM ENTITYLIVING CLASS
 			float[] ret = net.minecraftforge.common.ForgeHooks.onLivingFall(this, distance, damageMultiplier);
 			if (ret == null) {
@@ -294,8 +288,9 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	@Nullable
 	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
-		EntityHelpers.fireOnSpawned(this, livingdata);
-		return super.onInitialSpawn(difficulty, livingdata);
+		livingdata = super.onInitialSpawn(difficulty, livingdata);
+		EntityHelpers.fireOnFirstSpawned(this);
+		return livingdata;
 	}
 
 	/**
@@ -305,7 +300,10 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	 */
 	@Override
 	public ItemStack getPickedResult(final RayTraceResult target) {
-		return this.container.getMMDMaterial().getItemStack(Names.BLOCK);
+		if(this.container != null && this.container.getMMDMaterial().hasBlock(Names.BLOCK)) {
+			return this.container.getMMDMaterial().getItemStack(Names.BLOCK);
+		}
+		return super.getPickedResult(target);
 	}
 
 	@Override
@@ -324,7 +322,9 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	
 	@Override
 	public void setContainer(final EntityContainer containerIn) {
-		this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+		if(containerIn != null) {
+			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+		}
 	}
 	
 	@Override

@@ -3,16 +3,21 @@ package com.mcmoddev.lib.init;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import com.mcmoddev.lib.data.MaterialNames;
+import com.mcmoddev.lib.data.Names;
 import com.mcmoddev.lib.data.SharedStrings;
 import com.mcmoddev.lib.entity.AnimalContainer;
 import com.mcmoddev.lib.entity.EntityContainer;
 import com.mcmoddev.lib.entity.EntityCustomAnimal;
 import com.mcmoddev.lib.entity.EntityCustomGolem;
+import com.mcmoddev.lib.entity.EntityCustomMob;
 import com.mcmoddev.lib.entity.GolemContainer;
 import com.mcmoddev.lib.entity.MobContainer;
 import com.mcmoddev.lib.material.MMDMaterial;
@@ -42,10 +47,12 @@ public class Entities {
 	public static final String PREFIX_MOB = "mob_";
 	
 	
-	static {
-		add(addGolem(GolemContainer.Builder.create(Materials.EMPTY).build()).getEntityClass(), "customgolem");
-		add(addAnimal(AnimalContainer.Builder.create("customanimal").build()).getEntityClass(), "customanimal");
-		add(addMob(MobContainer.Builder.create("custommob").build()).getEntityClass(), "custommob");
+	public static void init() {
+		add(addGolem(GolemContainer.EMPTY_GOLEM_CONTAINER).getEntityClass(), "customgolem");
+		add(addAnimal(AnimalContainer.EMPTY_ANIMAL_CONTAINER).getEntityClass(), "customanimal");
+		add(addMob(MobContainer.EMPTY_MOB_CONTAINER).getEntityClass(), "custommob");
+		// DEBUG / TEST
+		// addGolem(GolemContainer.Builder.create(Materials.getMaterialByName(MaterialNames.GOLD)).build());
 		
 	}
 	
@@ -66,15 +73,16 @@ public class Entities {
 	 * @param name a unique name to which your mod id will be added
 	 * for entity registration.
 	 **/
-	protected static Class<? extends EntityLiving> add(final Class<? extends EntityLiving> entityClass, final String name) {
-		entitiesToRegister.add(build(entityClass, name));
-		return entityClass;
+	protected static EntityEntry add(final Class<? extends EntityLiving> entityClass, final String name) {
+		final EntityEntry entry = buildEntityEntry(entityClass, name);
+		entitiesToRegister.add(entry);
+		return entry;
 	}
 	
-	protected static <E extends Entity> EntityEntry build(final Class<E> entityClass, final String name) {
+	private static final EntityEntry buildEntityEntry(final Class<? extends EntityLiving> entityClass, final String name) {
 		final String modid = Loader.instance().activeModContainer().getModId();
 		final int entityId = entityIdMap.getOrDefault(modid, 0);
-		EntityEntryBuilder builder = EntityEntryBuilder.<E>create();
+		EntityEntryBuilder builder = EntityEntryBuilder.create();
 		builder.entity(entityClass);
 		builder.name(modid.concat(".").concat(name));
 		builder.id(new ResourceLocation(modid, name), entityId);
@@ -89,12 +97,12 @@ public class Entities {
 	 * as specified in the given {@link AnimalContainer}
 	 * @param container Obtained using {@link AnimalContainer.Builder}
 	 **/
-	protected static AnimalContainer addAnimal(final AnimalContainer container) {
-		final String key = PREFIX_ANIMAL.concat(container.getEntityName());
+	protected static final AnimalContainer addAnimal(final AnimalContainer container) {
+		final String key = makeKey(container);
 		if(null == key || key.isEmpty()) {
 			com.mcmoddev.lib.MMDLib.logger.warn("Skipping invalid String name in AnimalContainer registration.");
 		} else if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register AnimalContainer with name '%s' as it already exists.", key);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register AnimalContainer with name '{}' as it already exists.", key);
 		} else {
 			customEntities.put(key, container);
 		}		
@@ -106,12 +114,12 @@ public class Entities {
 	 * as specified in the given {@link MobContainer}
 	 * @param container Obtained using {@link MobContainer.Builder}
 	 **/
-	protected static MobContainer addMob(final MobContainer container) {
-		final String key = PREFIX_MOB.concat(container.getEntityName());
+	protected static final MobContainer addMob(final MobContainer container) {
+		final String key = makeKey(container);
 		if(null == key || key.isEmpty()) {
 			com.mcmoddev.lib.MMDLib.logger.warn("Skipping invalid String name in MobContainer registration.");
 		} else if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register MobContainer with name '%s' as it already exists.", key);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register MobContainer with name '{}' as it already exists.", key);
 		} else {
 			customEntities.put(key, container);
 		}		
@@ -124,27 +132,61 @@ public class Entities {
 	 * as specified in the given {@link GolemContainer}
 	 * @param container Obtained using {@link GolemContainer.Builder}
 	 **/
-	protected static GolemContainer addGolem(final GolemContainer container) {
+	protected static final GolemContainer addGolem(final GolemContainer container) {
 		final String material = container.getMMDMaterial().getName();
-		final String key = PREFIX_GOLEM.concat(material);
+		final String key = makeKey(container);
 		if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register GolemContainer for MMDMaterial '%s' as it already exists.", material);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register GolemContainer for MMDMaterial '{}' as it already exists.", material);
 		} else {
 			customEntities.put(key, container);
+			com.mcmoddev.lib.MMDLib.logger.info("Registered GolemContainer with key {}", key);
 		}		
 		return container;
 	}
 	
-	public static Collection<EntityEntry> getEntriesToRegister() {
+	public static final String makeKey(final EntityContainer container) {
+		if(container instanceof GolemContainer) {
+			return makeGolemKey(((GolemContainer)container).getMMDMaterial());
+		}
+		if(container instanceof AnimalContainer) {
+			return PREFIX_ANIMAL.concat(container.getEntityName());
+		}
+		if(container instanceof MobContainer) {
+			return PREFIX_MOB.concat(container.getEntityName());
+		}
+		return container.getEntityName();
+	}
+	
+	public static final String makeGolemKey(final MMDMaterial material) {
+		return PREFIX_GOLEM.concat(material.getName());
+	}
+	
+	public static final Collection<EntityEntry> getEntriesToRegister() {
 		return entitiesToRegister;
 	}
 	
-	public static boolean hasEntityContainer(final String name) {
+	/**
+	 * @return a list of all registered golem materials where
+	 * the material has a valid, registered block.
+	 **/
+	public static final List<MMDMaterial> getGolemMaterials() {
+		return customEntities.values().stream()
+				.filter(e -> e instanceof GolemContainer)
+				.map(e -> ((GolemContainer)e).getMMDMaterial())
+				.filter(e -> e.hasBlock(Names.BLOCK))
+				.collect(Collectors.toList());
+	}
+	
+	public static final boolean hasEntityContainer(final String name) {
 		return customEntities.containsKey(name);
 	}
 	
 	@Nullable
-	public static EntityContainer getEntityContainer(final String name) {
-		return customEntities.get(name);
+	public static <E extends EntityContainer> E getEntityContainer(final String name) {
+		EntityContainer cont = customEntities.get(name);
+		if(cont != null) {
+			return (E)cont;
+		}
+		return null;
 	}
 }

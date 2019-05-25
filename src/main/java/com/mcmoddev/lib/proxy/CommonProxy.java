@@ -4,14 +4,7 @@ import com.mcmoddev.lib.capability.MMDCapabilities;
 import com.mcmoddev.lib.container.MMDGuiHandler;
 import com.mcmoddev.lib.data.Names;
 import com.mcmoddev.lib.data.MaterialNames;
-import com.mcmoddev.lib.events.MMDLibRegisterBlockTypes;
-import com.mcmoddev.lib.events.MMDLibRegisterBlocks;
-import com.mcmoddev.lib.events.MMDLibRegisterFluids;
-import com.mcmoddev.lib.events.MMDLibRegisterItemTypes;
-import com.mcmoddev.lib.events.MMDLibRegisterItems;
-import com.mcmoddev.lib.events.MMDLibRegisterMaterialProperties;
-import com.mcmoddev.lib.events.MMDLibRegisterMaterials;
-import com.mcmoddev.lib.events.MMLibPreInitSync;
+import com.mcmoddev.lib.events.*;
 import com.mcmoddev.lib.integration.IntegrationManager;
 import com.mcmoddev.lib.material.MMDMaterial;
 //import com.mcmoddev.lib.network.MMDMessages;
@@ -43,6 +36,7 @@ public class CommonProxy {
 		com.mcmoddev.lib.init.Materials.init();
 //		com.mcmoddev.lib.init.Blocks.init();
 		com.mcmoddev.lib.init.Items.init();
+		com.mcmoddev.lib.init.Entities.init();
 		com.mcmoddev.lib.init.Fluids.init();
 		com.mcmoddev.lib.init.VillagerTrades.init();
 
@@ -53,6 +47,8 @@ public class CommonProxy {
 		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterMaterials());
 		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterBlocks());
 		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterItems());
+		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterEntities());
+		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterEntityProperties());
 		MinecraftForge.EVENT_BUS.post(new MMDLibRegisterFluids());
 		com.mcmoddev.lib.init.Recipes.init();
 

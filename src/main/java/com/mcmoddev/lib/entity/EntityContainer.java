@@ -2,9 +2,7 @@ package com.mcmoddev.lib.entity;
 
 import com.mcmoddev.lib.material.MMDMaterial;
 
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
-import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.storage.loot.LootTableList;
 import net.minecraftforge.registries.IForgeRegistryEntry;
@@ -66,7 +64,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		protected Class<? extends EntityLiving> entityClass;
 		protected String entityName;
 		/** Defaults to the grayscale metal golem texture **/
-		protected ResourceLocation texture = new ResourceLocation("TODO");
+		protected ResourceLocation texture = GolemContainer.TEXTURE_METAL_GRAYSCALE_HIGH;
 		/** Defaults to empty loot table **/
 		protected ResourceLocation lootTable = LootTableList.EMPTY;
 		protected double health = 10.0D;
@@ -126,7 +124,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		 * @return the Builder (for chaining methods)
 		 * @see MobHostility
 		 **/
-		public Builder setHostility(final MobHostility attitudeIn) {
+		public Builder setHostility(final EntityContainer.MobHostility attitudeIn) {
 			this.attitude = attitudeIn;
 			return this;
 		}
@@ -165,32 +163,6 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		public static EntityContainer.Builder create(final Class<? extends EntityLiving> entityClassIn, 
 				final String entityNameIn) {
 			return new EntityContainer.Builder(entityClassIn, entityNameIn);
-		}
-		
-		/**
-		 * Given that MMDMaterial 'Iron' has ArmorMaxDamageFactor of 16,
-		 * this equation returns 100.0 when given an MMDMaterial with
-		 * the same {@code Strength} stat as Iron.
-		 * @param mat the material used for this golem
-		 * @return an appropriate value for the golem's max health.
-		 * @see MMDMaterial#getArmorMaxDamageFactor()
-		 **/
-		protected static double calculateHealth(final MMDMaterial mat) {
-			// note: #getArmorMaxDamageFactor returns STRENGTH * 2
-			return mat.getArmorMaxDamageFactor() * 6.25D;
-		}
-		
-		/**
-		 * Given that MMDMaterial 'Iron' has Block Hardness of 16,
-		 * this equation returns 7.5 when given an MMDMaterial with
-		 * the same {@code Hardness} stat as Iron.
-		 * @param mat the material used for this golem
-		 * @return an appropriate value for the golem's attack damage.
-		 * @see MMDMaterial#getBlockHardness()
-		 **/
-		protected static double calculateAttack(final MMDMaterial mat) {
-			// note: #getBlockHardness returns HARDNESS * 2
-			return mat.getBlockHardness() * 0.46875;
 		}
 	}
 

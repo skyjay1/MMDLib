@@ -38,10 +38,16 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 
 	protected static final DataParameter<String> CONTAINER_NAME = EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
 	private static final String KEY_CONTAINER_NAME = "ContainerName";
-	private MobContainer container;
+	private MobContainer container = MobContainer.EMPTY_MOB_CONTAINER;
 	
 	public EntityCustomMob(World worldIn) {
 		super(worldIn);
+	}
+	
+	@Override
+	protected void entityInit() {
+		super.entityInit();
+		this.dataManager.register(CONTAINER_NAME, Entities.makeKey(MobContainer.EMPTY_MOB_CONTAINER));
 	}
 	
 	/**
@@ -56,29 +62,29 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
 		// add AI
-        this.addTaskIfAbsent(5, new EntityAIWanderAvoidWater(this, cont.getMoveSpeed() * 4.0D));
-        this.addTaskIfAbsent(6, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
-        this.addTaskIfAbsent(7, new EntityAILookIdle(this));
+		EntityHelpers.addTaskIfAbsent(this, 5, new EntityAIWanderAvoidWater(this, cont.getMoveSpeed() * 4.0D));
+		EntityHelpers.addTaskIfAbsent(this, 6, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
+		EntityHelpers.addTaskIfAbsent(this, 7, new EntityAILookIdle(this));
         // add optional AI
 		if(cont.canSwim()) {
-			 this.addTaskIfAbsent(0, new EntityAISwimming(this));
+			EntityHelpers.addTaskIfAbsent(this, 0, new EntityAISwimming(this));
 		}
 		if(cont.leapsAtTarget()) {
-	       this.addTaskIfAbsent(3, new EntityAILeapAtTarget(this, 0.4F));
+			EntityHelpers.addTaskIfAbsent(this, 3, new EntityAILeapAtTarget(this, 0.4F));
 		}
 		// add hostility level
 		switch(cont.getHostility()) {
 		case HOSTILE:
-			this.addTaskIfAbsent(1, new EntityAINearestAttackableTarget(this, EntityPlayer.class, true));
-	        this.addTaskIfAbsent(3, new EntityAINearestAttackableTarget(this, EntityVillager.class, false));
-	        this.addTaskIfAbsent(3, new EntityAINearestAttackableTarget(this, EntityIronGolem.class, true));
+			EntityHelpers.addTaskIfAbsent(this, 1, new EntityAINearestAttackableTarget(this, EntityPlayer.class, true));
+			EntityHelpers.addTaskIfAbsent(this, 3, new EntityAINearestAttackableTarget(this, EntityVillager.class, false));
+			EntityHelpers.addTaskIfAbsent(this, 3, new EntityAINearestAttackableTarget(this, EntityIronGolem.class, true));
 			 // intentional omission of break statement
 		case NEUTRAL:
-			this.addTaskIfAbsent(4, new EntityAILeapAtTarget(this, 0.4F));
-			this.addTaskIfAbsent(5, new EntityAIAttackMelee(this, 1.0D, true));
+			EntityHelpers.addTaskIfAbsent(this, 4, new EntityAILeapAtTarget(this, 0.4F));
+			EntityHelpers.addTaskIfAbsent(this, 5, new EntityAIAttackMelee(this, 1.0D, true));
 			break;
 		case PASSIVE: default:
-			this.addTaskIfAbsent(1, new EntityAIPanic(this, cont.getMoveSpeed() * 8.0D));
+			EntityHelpers.addTaskIfAbsent(this, 1, new EntityAIPanic(this, cont.getMoveSpeed() * 8.0D));
 			break;
 		}
 		
@@ -91,10 +97,10 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 		if(CONTAINER_NAME.equals(key)) {
 			final String containerName = this.getDataManager().get(CONTAINER_NAME);
 			// make sure a container is registered for this material
-			final EntityContainer cont = Entities.getEntityContainer(containerName);
-			if(cont instanceof MobContainer) {
-				// actually use the container to update golem stats
-				this.updateContainerStats((MobContainer)cont);
+			final MobContainer cont = Entities.getEntityContainer(containerName);
+			if(cont != null) {
+				// actually use the container to update mob stats
+				this.updateContainerStats(cont);
 			} else {
 				com.mcmoddev.lib.MMDLib.logger.error("Failed to update mob stats - no MobContainer was found with name '%s'", containerName);
 			}
@@ -162,7 +168,8 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		return EntityHelpers.fireOnHurt(this, source, amount) && super.attackEntityFrom(source, amount);
+		EntityHelpers.fireOnHurt(this, source, amount);
+		return super.attackEntityFrom(source, amount);
 	}
 	
 	@Override
@@ -174,24 +181,28 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 	@Override
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
-		// TODO safety checks
-		compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+		if(this.getContainer() != null) {
+			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+		}
 		EntityHelpers.fireOnWriteNBT(this, compound);
 	}
 	
 	@Override
 	public void readEntityFromNBT(final NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
-		final String name = compound.getString(KEY_CONTAINER_NAME);
-		this.setContainer(Entities.getEntityContainer(name));
+		if(compound.hasKey(KEY_CONTAINER_NAME)) {
+			final String name = compound.getString(KEY_CONTAINER_NAME);
+			this.setContainer(Entities.getEntityContainer(name));
+		}
 		EntityHelpers.fireOnReadNBT(this, compound);
 	}
 	
 	@Override
 	@Nullable
 	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
-		EntityHelpers.fireOnSpawned(this, livingdata);
-		return super.onInitialSpawn(difficulty, livingdata);
+		livingdata = super.onInitialSpawn(difficulty, livingdata);
+		EntityHelpers.fireOnFirstSpawned(this);
+		return livingdata;
 	}
 	
 	@Override
@@ -210,7 +221,9 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 
 	@Override
 	public void setContainer(EntityContainer containerIn) {
-		this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+		if(containerIn != null) {
+			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+		}
 	}
 
 	@Override

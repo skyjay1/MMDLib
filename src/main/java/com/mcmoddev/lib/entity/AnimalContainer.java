@@ -12,6 +12,8 @@ import net.minecraft.util.ResourceLocation;
  * <br>Adapted from BetterAnimalsPlus by its_meow. Used with permission.
  */
 public class AnimalContainer extends EntityContainer {
+	
+	public static final AnimalContainer EMPTY_ANIMAL_CONTAINER = AnimalContainer.Builder.create("customanimal").build();
 
 	protected final Item temptItem;
 	

@@ -1,7 +1,11 @@
 package com.mcmoddev.lib.proxy;
 
+import javax.annotation.Nonnull;
+
 import com.mcmoddev.lib.client.registrations.RegistrationHelper;
+import com.mcmoddev.lib.client.renderer.RenderCustomGolem;
 import com.mcmoddev.lib.data.Names;
+import com.mcmoddev.lib.entity.EntityCustomGolem;
 import com.mcmoddev.lib.init.*;
 import com.mcmoddev.lib.network.MMDMessages;
 
@@ -14,9 +18,13 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.event.ModelRegistryEvent;
 import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.fml.client.registry.IRenderFactory;
+import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.registry.EntityEntry;
 
 /**
  * Base Metals Client Proxy
@@ -25,6 +33,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
  *
  */
 public class ClientProxy extends CommonProxy {
+	
+	private static final IRenderFactory<EntityCustomGolem> FACTORY_GOLEM = RenderCustomGolem::new;
 
 	@Override
 	public void preInit(FMLPreInitializationEvent event) {
@@ -52,7 +62,12 @@ public class ClientProxy extends CommonProxy {
 		for (final String name : Fluids.getFluidBlockRegistry().keySet()) {
 			RegistrationHelper.registerFluidRender(name);
 		}
-
+	}
+	
+	@SubscribeEvent
+	public void registerEntities(final RegistryEvent.Register<EntityEntry> event) {
+		// TODO call ALL entity renders
+		registerGolemRender(com.mcmoddev.lib.entity.EntityCustomGolem.class);
 	}
 
 	@Override
@@ -65,6 +80,14 @@ public class ClientProxy extends CommonProxy {
 		for (final String name : Blocks.getBlockRegistry().keySet()) {
 			registerRenderOuter(Blocks.getBlockByName(name));
 		}
+		
+	}
+	
+	public static void registerGolemRender(@Nonnull Class<? extends EntityCustomGolem> cls) {
+		// TODO safety checks?
+		RenderingRegistry.registerEntityRenderingHandler(cls, FACTORY_GOLEM);
+		// DEBUG
+		com.mcmoddev.lib.MMDLib.logger.info("Registered EntityCustomGolem render handler");
 	}
 
 	private void registerRenderOuter ( Item item ) {

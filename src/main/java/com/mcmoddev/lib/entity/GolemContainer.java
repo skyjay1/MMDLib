@@ -1,6 +1,7 @@
 package com.mcmoddev.lib.entity;
 
 import com.mcmoddev.lib.init.Entities;
+import com.mcmoddev.lib.init.Materials;
 import com.mcmoddev.lib.material.IMMDObject;
 import com.mcmoddev.lib.material.MMDMaterial;
 
@@ -15,6 +16,18 @@ import net.minecraft.util.ResourceLocation;
  * <br>Adapted from BetterAnimalsPlus by its_meow. Used with permission.
  */
 public final class GolemContainer extends EntityContainer implements IMMDObject {
+	
+	/** High-Contrast grayscale metal texture **/
+	public static final ResourceLocation TEXTURE_METAL_GRAYSCALE_HIGH = 
+			new ResourceLocation("mmdlib:textures/entity/golem_metal_grayscale_high.png");
+	/** Medium-to-Low-Contrast grayscale metal texture **/
+	public static final ResourceLocation TEXTURE_METAL_GRAYSCALE_LOW = 
+			new ResourceLocation("mmdlib:textures/entity/golem_metal_grayscale_low.png");
+	/** Non-grayscale layer of eyes and vines **/
+	public static final ResourceLocation TEXTURE_OVERLAY = 
+			new ResourceLocation("mmdlib:textures/entity/golem_overlay.png");
+	
+	public static final GolemContainer EMPTY_GOLEM_CONTAINER = GolemContainer.Builder.create(Materials.EMPTY).build();
 		
 	private final MMDMaterial material;
 	private final boolean hasTint;
@@ -65,9 +78,10 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		protected boolean fallDamage = false;
 		
 		public Builder(final MMDMaterial mat) {
-			super(EntityCustomGolem.class, Entities.PREFIX_GOLEM.concat(mat.getName()));
+			super(EntityCustomGolem.class, Entities.makeGolemKey(mat));
 			this.material = mat;
-			this.knockbackResist = 1.0D;
+			this.knockbackResist = 0.8D;
+			this.canSwim = false;
 			this.health = calculateHealth(mat);
 			this.attack = calculateAttack(mat);
 			this.setHostility(MobHostility.NEUTRAL);
@@ -78,12 +92,16 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 			case GEM:
 				break;
 			case METAL:
+				this.setTexture(TEXTURE_METAL_GRAYSCALE_HIGH);
+				this.knockbackResist = 1.0D;
 				break;
 			case MINERAL:
 				break;
 			case ROCK:
 				break;
 			case WOOD:
+				this.knockbackResist = 0;
+				this.canSwim = true;
 				break;
 			default:
 				break;
@@ -136,7 +154,7 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		 * @return an appropriate value for the golem's max health.
 		 * @see MMDMaterial#getArmorMaxDamageFactor()
 		 **/
-		protected static double calculateHealth(final MMDMaterial mat) {
+		private static double calculateHealth(final MMDMaterial mat) {
 			// note: #getArmorMaxDamageFactor returns STRENGTH * 2
 			return mat.getArmorMaxDamageFactor() * 6.25D;
 		}
@@ -149,7 +167,7 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		 * @return an appropriate value for the golem's attack damage.
 		 * @see MMDMaterial#getBlockHardness()
 		 **/
-		protected static double calculateAttack(final MMDMaterial mat) {
+		private static double calculateAttack(final MMDMaterial mat) {
 			// note: #getBlockHardness returns HARDNESS * 2
 			return mat.getBlockHardness() * 0.46875;
 		}
