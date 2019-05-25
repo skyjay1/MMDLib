@@ -37,7 +37,7 @@ import net.minecraft.world.storage.loot.LootTableList;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
+public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem> {
 	
 	protected static final DataParameter<String> MATERIAL = EntityDataManager.<String>createKey(EntityCustomGolem.class, DataSerializers.STRING);
 	private static final String KEY_MATERIAL = "MMDMaterial";
@@ -92,6 +92,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
 		// TODO hook to add/remove entity AI as needed.
+		EntityHelpers.fireOnInitAI(this);
 	}
 
 	@Override
@@ -135,6 +136,13 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 		if (this.attackTimer2 > 0) {
 			--this.attackTimer2;
 		}
+		EntityHelpers.fireOnLivingUpdate(this);
+	}
+
+	@Override
+	public boolean attackEntityFrom(DamageSource source, float amount) {
+		
+		return EntityHelpers.fireOnHurt(this, source, amount) && super.attackEntityFrom(source, amount);
 	}
 
 	@Override
@@ -153,6 +161,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 		super.writeEntityToNBT(compound);
 		// TODO safety checks
 		compound.setString(KEY_MATERIAL, this.container.getMMDMaterial().getName());
+		EntityHelpers.fireOnWriteNBT(this, compound);
 	}
 	
 	@Override
@@ -160,10 +169,14 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 		super.readEntityFromNBT(compound);
 		// TODO safety checks
 		this.setMMDMaterial(Materials.getMaterialByName(compound.getString(KEY_MATERIAL)));
+		EntityHelpers.fireOnReadNBT(this, compound);
 	}
 
 	@Override
 	public boolean attackEntityAsMob(final Entity entityIn) {
+		if(!EntityHelpers.fireOnAttack(this, entityIn)) {
+			return false;
+		};
 		// TODO hook for custom attack behavior
 		this.attackTimer2 = 10;
 		this.world.setEntityState(this, KEY_ATTACK);
@@ -246,6 +259,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	@Override
 	public void onDeath(final DamageSource cause) {
 		// TODO hook here for special behavior
+		EntityHelpers.fireOnDeath(this, cause);
 		super.onDeath(cause);
 	}
 	
@@ -298,5 +312,10 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDObject {
 	
 	public GolemContainer getContainer() {
 		return this.container;
+	}
+
+	@Override
+	public EntityCustomGolem getEntity() {
+		return this;
 	}
 }
