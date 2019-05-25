@@ -1,46 +1,36 @@
 package com.mcmoddev.lib.entity;
 
-import com.mcmoddev.lib.init.Materials;
+import com.mcmoddev.lib.init.Entities;
 import com.mcmoddev.lib.material.IMMDObject;
 import com.mcmoddev.lib.material.MMDMaterial;
 
+import net.minecraft.entity.EntityLiving;
 import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.registries.IForgeRegistryEntry;
 
 /**
  * This class contains all of the information used to customize
  * a {@link EntityCustomGolem} based on a given {@link MMDMaterial}.
  * Must be created using the {@link GolemContainer.Builder} and should
  * not be modified at any point.
- * @author skyjay1
+ * <br>Adapted from BetterAnimalsPlus by its_meow. Used with permission.
  */
-public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContainer> implements IMMDObject {
-	
-	public static final GolemContainer EMPTY = new GolemContainer.Builder(Materials.EMPTY).build();
-	
+public final class GolemContainer extends EntityContainer implements IMMDObject {
+		
 	private final MMDMaterial material;
-	private final ResourceLocation texture;
-
-	private final double health;
-	private final double attack;
-	private final double walkSpeed;
-	private final double knockbackResist;
 	private final boolean hasTint;
 	private final boolean fallDamage;
-	
 	private final float[] colorRGBA = new float[4];
 	
-	private GolemContainer(final MMDMaterial materialIn, final ResourceLocation textureIn,
-			final boolean hasTintIn, final boolean fallDamageIn,
-			final double healthIn, final double attackIn, final double walkSpeedIn, final double knockbackResistIn) {
+	protected GolemContainer(final Class<? extends EntityLiving> entityClassIn, final String nameIn,
+			final MMDMaterial materialIn, final ResourceLocation textureIn,
+			final ResourceLocation lootTableIn, final MobHostility attitudeIn, 
+			final boolean canSwimIn, final boolean hasTintIn, final boolean fallDamageIn, 
+			final double healthIn, final double attackIn, 
+			final double walkSpeedIn, final double knockbackResistIn) {
+		super(entityClassIn, nameIn, textureIn, lootTableIn, attitudeIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
 		this.material = materialIn;
-		this.texture = textureIn;
 		this.hasTint = hasTintIn;
 		this.fallDamage = fallDamageIn;
-		this.health = healthIn;
-		this.attack = attackIn;
-		this.walkSpeed = walkSpeedIn;
-		this.knockbackResist = knockbackResistIn;
 		// set color values based on tint
 		long tmpColor = materialIn.getTintColor();
 		if ((tmpColor & -67108864) == 0) {
@@ -52,19 +42,11 @@ public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContaine
 		this.colorRGBA[3] = (float) (tmpColor >> 24 & 255) / 255.0F;
 	}
 	
-	public ResourceLocation getTexture() { return texture; }
-	public double getHealth() { return health; }
-	public double getAttack() { return attack; }
-	public double getMoveSpeed() { return walkSpeed; }
-	public double getKnockbackResist() { return knockbackResist; }
 	public boolean hasFallDamage() { return fallDamage; }
 	public boolean hasTint() { return hasTint; }
 	public float[] getRGBA() { return this.colorRGBA; }
-
 	@Override
-	public MMDMaterial getMMDMaterial() {
-		return this.material;
-	}
+	public MMDMaterial getMMDMaterial() { return this.material; }
 	
 	/**
 	 * Builder class for {@link GolemContainer}. Uses default values
@@ -73,37 +55,39 @@ public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContaine
 	 * knockback resistance are included.
 	 * @author skyjay1
 	 */
-	public static class Builder {
+	public static class Builder extends EntityContainer.Builder {
 		
 		/** Must be specified in the constructor **/
-		private final MMDMaterial material;
-		/** Defaults to the grayscale metal golem texture **/
-		private ResourceLocation texture = new ResourceLocation("TODO");
+		protected final MMDMaterial material;
 		/** Defaults to true **/
-		private boolean hasTint = true;
+		protected boolean hasTint = true;
 		/** Defaults to false **/
-		private boolean fallDamage = false;
-		/** 
-		 * Initializes to a value based on the {@link MMDMaterial}
-		 * given in the constructor.
-		 * @see #calculateHealth(MMDMaterial)
-		 **/
-		private double health;
-		/** 
-		 * Initializes to a value based on the {@link MMDMaterial}
-		 * given in the constructor.
-		 * @see #calculateAttack(MMDMaterial)
-		 **/
-		private double attack;
-		/** Defaults to 0.25 (moderately fast) **/
-		private double walkSpeed = 0.25D;
-		/** Defaults to 1.0 (full resistance) **/
-		private double knockbackResist = 1.0D;
+		protected boolean fallDamage = false;
 		
 		public Builder(final MMDMaterial mat) {
+			super(EntityCustomGolem.class, Entities.PREFIX_GOLEM.concat(mat.getName()));
 			this.material = mat;
+			this.knockbackResist = 1.0D;
 			this.health = calculateHealth(mat);
 			this.attack = calculateAttack(mat);
+			this.setHostility(MobHostility.NEUTRAL);
+			// TODO make grayscale textures and RLs for each of these
+			switch(mat.getType()) {
+			case CRYSTAL:
+				break;
+			case GEM:
+				break;
+			case METAL:
+				break;
+			case MINERAL:
+				break;
+			case ROCK:
+				break;
+			case WOOD:
+				break;
+			default:
+				break;
+			}
 		}
 		
 		/**
@@ -115,48 +99,6 @@ public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContaine
 		 **/
 		public Builder disableTint() {
 			this.hasTint = false;
-			return this;
-		}
-		
-		/**
-		 * Specify a texture location to use for this golem.
-		 * If one is not specified, the default texture will
-		 * be the basic grayscale metal golem. For pre-colored
-		 * textures (where a GL coloring should not be applied)
-		 * you will also want to call {@link #disableTint()}
-		 * @param rl the entity texture to be applied
-		 * @return the Builder (for chaining methods)
-		 **/
-		public Builder setTexture(final ResourceLocation rl) {
-			this.texture = rl;
-			return this;
-		}
-		
-		/**
-		 * Specify the max health of the golem that will
-		 * be built. Default value for Iron Golem is 100.0.
-		 * If this method is not called, the max health
-		 * will be calculated from the {@link MMDMaterial}
-		 * that was given in the constructor.
-		 * @param healthIn the max health value
-		 * @return the Builder (for chaining methods)
-		 **/
-		public Builder setHealth(final double healthIn) {
-			this.health = healthIn;
-			return this;
-		}
-		
-		/**
-		 * Specify the base attack damage of the golem that will
-		 * be built. Default value for Iron Golem is 7.5.
-		 * If this method is not called, the attack damage
-		 * will be calculated from the {@link MMDMaterial}
-		 * that was given in the constructor.
-		 * @param attackIn the base attack value
-		 * @return the Builder (for chaining methods)
-		 **/
-		public Builder setAttack(final double attackIn) {
-			this.attack = attackIn;
 			return this;
 		}
 		
@@ -176,8 +118,14 @@ public final class GolemContainer extends IForgeRegistryEntry.Impl<GolemContaine
 		 * Builds the GolemContainer with all values as specified in previously chained methods.
 		 * @return a new GolemContainer that is ready to be registered.
 		 **/
+		@Override
 		public GolemContainer build() {
-			return new GolemContainer(material, texture, hasTint, fallDamage, health, attack, walkSpeed, knockbackResist);
+			return new GolemContainer(entityClass, entityName, material, texture, lootTable,
+					attitude, canSwim, hasTint, fallDamage, health, attack, walkSpeed, knockbackResist);
+		}
+		
+		public static GolemContainer.Builder create(final MMDMaterial materialIn) {
+			return new GolemContainer.Builder(materialIn);
 		}
 		
 		/**

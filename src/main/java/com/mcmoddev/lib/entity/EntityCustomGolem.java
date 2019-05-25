@@ -13,9 +13,13 @@ import net.minecraft.block.Block;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.IEntityLivingData;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.EntityAINearestAttackableTarget;
 import net.minecraft.entity.monster.EntityIronGolem;
 import net.minecraft.init.MobEffects;
 import net.minecraft.init.SoundEvents;
@@ -32,18 +36,19 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.village.Village;
+import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.loot.LootTableList;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem> {
+public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem>, IMMDObject {
 	
-	protected static final DataParameter<String> MATERIAL = EntityDataManager.<String>createKey(EntityCustomGolem.class, DataSerializers.STRING);
-	private static final String KEY_MATERIAL = "MMDMaterial";
+	protected static final DataParameter<String> CONTAINER_NAME = EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
+	private static final String KEY_CONTAINER_NAME = "ContainerName";
 	private static final byte KEY_ATTACK = (byte)24;
 	
-	private GolemContainer container = GolemContainer.EMPTY;
+	private GolemContainer container;
 	private int attackTimer2;
 
 	public EntityCustomGolem(final World world) {
@@ -54,7 +59,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	 * ALWAYS CALL THIS WHEN YOU FIRST MAKE THE GOLEM IN-WORLD
 	 **/
 	public EntityCustomGolem setMMDMaterial(@Nonnull final MMDMaterial mat) {
-		this.getDataManager().set(MATERIAL, mat.getName());
+		
 		return this;
 	}
 	
@@ -62,21 +67,16 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	public void notifyDataManagerChange(final DataParameter<?> key) {
 		super.notifyDataManagerChange(key);
-		if(MATERIAL.equals(key)) {
-			// make sure the material exists
-			final String materialName = this.getDataManager().get(MATERIAL);
-			if(null == materialName || !Materials.hasMaterial(materialName)) {
-				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - invalid material name was provided!");
-				return;
-			}
+		if(CONTAINER_NAME.equals(key)) {
+			final String containerName = this.getDataManager().get(CONTAINER_NAME);
 			// make sure a container is registered for this material
-			final GolemContainer cont = Entities.getContainer(Materials.getMaterialByName(materialName));
-			if(null == cont) {
-				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no container was found for material with name '%s'", materialName);
-				return;
+			final EntityContainer cont = Entities.getEntityContainer(containerName);
+			if(cont instanceof GolemContainer) {
+				// actually use the container to update golem stats
+				this.updateContainerStats((GolemContainer)cont);
+			} else {
+				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no GolemContainer was found with name '%s'", containerName);
 			}
-			// actually use the container to update golem stats
-			this.updateContainerStats(cont);
 		}
 	}
 
@@ -91,7 +91,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(cont.getMoveSpeed());
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
-		// TODO hook to add/remove entity AI as needed.
 		EntityHelpers.fireOnInitAI(this);
 	}
 
@@ -131,7 +130,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 
 	@Override
 	public void onLivingUpdate() {
-		// TODO hook for custom living-update behavior
 		super.onLivingUpdate();
 		if (this.attackTimer2 > 0) {
 			--this.attackTimer2;
@@ -141,7 +139,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		
 		return EntityHelpers.fireOnHurt(this, source, amount) && super.attackEntityFrom(source, amount);
 	}
 
@@ -160,37 +157,36 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
 		// TODO safety checks
-		compound.setString(KEY_MATERIAL, this.container.getMMDMaterial().getName());
+		compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
 		EntityHelpers.fireOnWriteNBT(this, compound);
 	}
 	
 	@Override
 	public void readEntityFromNBT(final NBTTagCompound compound) {
 		super.readEntityFromNBT(compound);
-		// TODO safety checks
-		this.setMMDMaterial(Materials.getMaterialByName(compound.getString(KEY_MATERIAL)));
+		final String name = compound.getString(KEY_CONTAINER_NAME);
+		this.setContainer(Entities.getEntityContainer(name));
 		EntityHelpers.fireOnReadNBT(this, compound);
 	}
 
 	@Override
 	public boolean attackEntityAsMob(final Entity entityIn) {
-		if(!EntityHelpers.fireOnAttack(this, entityIn)) {
-			return false;
-		};
-		// TODO hook for custom attack behavior
-		this.attackTimer2 = 10;
-		this.world.setEntityState(this, KEY_ATTACK);
-		final float baseAttack = (float)this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).getAttributeValue();
-		boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 
-				baseAttack + this.rand.nextInt(Math.max(1, (int)(baseAttack * 2.0F))));
+		if(super.attackEntityAsMob(entityIn)) {
+			this.attackTimer2 = 10;
+			this.world.setEntityState(this, KEY_ATTACK);
+			final float baseAttack = (float)this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).getAttributeValue();
+			boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 
+					baseAttack + this.rand.nextInt(Math.max(2, (int)(baseAttack * 2.0F))));
 
-		if (flag) {
-			entityIn.motionY += 0.4000000059604645D;
-			this.applyEnchantments(this, entityIn);
+			if (flag) {
+				entityIn.motionY += 0.4000000059604645D;
+				this.applyEnchantments(this, entityIn);
+				EntityHelpers.fireOnAttack(this, entityIn);
+			}
+			this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
+			return flag;
 		}
-
-		this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
-		return flag;
+		return false;
 	}
 
 	@SideOnly(Side.CLIENT)
@@ -221,6 +217,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 
 	@Override
 	protected SoundEvent getHurtSound(final DamageSource damageSourceIn) {
+		// TODO add sound to EntityContainer
 		return super.getHurtSound(damageSourceIn);
 	}
 
@@ -237,8 +234,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Nullable
 	@Override
 	protected ResourceLocation getLootTable() {
-		// TODO return custom loot table
-		return LootTableList.ENTITIES_IRON_GOLEM;
+		return this.container != null ? this.container.getLootTable() : LootTableList.EMPTY;
 	}
 
 	@Override
@@ -258,7 +254,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 
 	@Override
 	public void onDeath(final DamageSource cause) {
-		// TODO hook here for special behavior
 		EntityHelpers.fireOnDeath(this, cause);
 		super.onDeath(cause);
 	}
@@ -266,6 +261,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	public void fall(float distance, float damageMultiplier) {
 		if (this.container.hasFallDamage()) {
+			// COPY PASTED FROM ENTITYLIVING CLASS
 			float[] ret = net.minecraftforge.common.ForgeHooks.onLivingFall(this, distance, damageMultiplier);
 			if (ret == null) {
 				return;
@@ -294,6 +290,13 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 			}
 		}
 	}
+	
+	@Override
+	@Nullable
+	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
+		EntityHelpers.fireOnSpawned(this, livingdata);
+		return super.onInitialSpawn(difficulty, livingdata);
+	}
 
 	/**
 	 * Called when a user uses the creative pick block button on this entity.
@@ -304,12 +307,27 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	public ItemStack getPickedResult(final RayTraceResult target) {
 		return this.container.getMMDMaterial().getItemStack(Names.BLOCK);
 	}
+
+	@Override
+	public String getName() {
+		if (this.hasCustomName()) {
+			return this.getCustomNameTag();
+		} else {
+			return I18n.format("mmd.entity.customgolem.name", getMMDMaterial().getCapitalizedName());
+		}
+	}
 	
 	@Override
 	public MMDMaterial getMMDMaterial() {
-		return this.container.getMMDMaterial();
+		return this.container != null ? this.container.getMMDMaterial() : Materials.EMPTY;
 	}
 	
+	@Override
+	public void setContainer(final EntityContainer containerIn) {
+		this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+	}
+	
+	@Override
 	public GolemContainer getContainer() {
 		return this.container;
 	}
@@ -318,4 +336,11 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	public EntityCustomGolem getEntity() {
 		return this;
 	}
+	
+	public static final class EntityAIAttackGolem extends EntityAINearestAttackableTarget<EntityCustomGolem> {
+		public EntityAIAttackGolem(final EntityCreature creature) {
+			super(creature, EntityCustomGolem.class, true);
+		}
+	}
+
 }

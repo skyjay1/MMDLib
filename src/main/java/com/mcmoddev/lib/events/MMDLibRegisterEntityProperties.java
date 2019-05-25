@@ -8,13 +8,13 @@ import net.minecraftforge.fml.common.eventhandler.IContextSetter;
 import net.minecraftforge.registries.IForgeRegistry;
 
 public class MMDLibRegisterEntityProperties extends Event implements IContextSetter {
-	private final IForgeRegistry<MMDEntityPropertyBase<?>> reg;
+	//private final IForgeRegistry<MMDEntityPropertyBase<?>> reg;
 	
 	public MMDLibRegisterEntityProperties() {
-		this.reg = EntityProperties.getRegistry();
+		//this.reg = EntityProperties.getRegistry();
 	}
 
-	public IForgeRegistry<MMDEntityPropertyBase<?>> getRegistry() {
-		return this.reg;
-	}
+//	public IForgeRegistry<MMDEntityPropertyBase<?>> getRegistry() {
+//		return this.reg;
+//	}
 }
