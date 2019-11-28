@@ -6,7 +6,9 @@ import com.mcmoddev.lib.material.IMMDObject;
 import com.mcmoddev.lib.material.MMDMaterial;
 
 import net.minecraft.entity.EntityLiving;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 
 /**
  * This class contains all of the information used to customize
@@ -36,11 +38,12 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 	
 	protected GolemContainer(final Class<? extends EntityLiving> entityClassIn, final String nameIn,
 			final MMDMaterial materialIn, final ResourceLocation textureIn,
-			final ResourceLocation lootTableIn, final MobHostility attitudeIn, 
+			final ResourceLocation lootTableIn, final MobHostility attitudeIn,
+			final SoundEvent livingSoundIn, final SoundEvent hurtSoundIn, final SoundEvent deathSoundIn,
 			final boolean canSwimIn, final boolean hasTintIn, final boolean fallDamageIn, 
 			final double healthIn, final double attackIn, 
 			final double walkSpeedIn, final double knockbackResistIn) {
-		super(entityClassIn, nameIn, textureIn, lootTableIn, attitudeIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
+		super(entityClassIn, nameIn, textureIn, lootTableIn, attitudeIn, livingSoundIn, hurtSoundIn, deathSoundIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
 		this.material = materialIn;
 		this.hasTint = hasTintIn;
 		this.fallDamage = fallDamageIn;
@@ -57,6 +60,11 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 	
 	public boolean hasFallDamage() { return fallDamage; }
 	public boolean hasTint() { return hasTint; }
+	/**
+	 * This is calculated from the return value of
+	 * {@link MMDMaterial#getTintColor()}
+	 * @return an array representing the tint of the golem.
+	 **/
 	public float[] getRGBA() { return this.colorRGBA; }
 	@Override
 	public MMDMaterial getMMDMaterial() { return this.material; }
@@ -79,12 +87,15 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		
 		public Builder(final MMDMaterial mat) {
 			super(EntityCustomGolem.class, Entities.makeGolemKey(mat));
+			// set defaults
 			this.material = mat;
 			this.knockbackResist = 0.8D;
 			this.canSwim = false;
 			this.health = calculateHealth(mat);
 			this.attack = calculateAttack(mat);
 			this.setHostility(MobHostility.NEUTRAL);
+			this.setSound(SoundEvents.BLOCK_STONE_STEP);
+			
 			// TODO make grayscale textures and RLs for each of these
 			switch(mat.getType()) {
 			case CRYSTAL:
@@ -139,7 +150,8 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		@Override
 		public GolemContainer build() {
 			return new GolemContainer(entityClass, entityName, material, texture, lootTable,
-					attitude, canSwim, hasTint, fallDamage, health, attack, walkSpeed, knockbackResist);
+					attitude, livingSound, hurtSound, deathSound, canSwim, hasTint, fallDamage, 
+					health, attack, walkSpeed, knockbackResist);
 		}
 		
 		public static GolemContainer.Builder create(final MMDMaterial materialIn) {

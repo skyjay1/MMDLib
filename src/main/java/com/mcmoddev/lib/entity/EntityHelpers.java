@@ -1,8 +1,6 @@
 package com.mcmoddev.lib.entity;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -14,6 +12,7 @@ import com.mcmoddev.lib.data.Names;
 import com.mcmoddev.lib.init.Entities;
 import com.mcmoddev.lib.material.MMDMaterial;
 import com.mcmoddev.lib.properties.EntityProperties;
+import com.mcmoddev.lib.properties.IMMDEntityProperty;
 
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.block.Block;
@@ -27,20 +26,10 @@ import net.minecraft.block.state.pattern.BlockMaterialMatcher;
 import net.minecraft.block.state.pattern.BlockPattern;
 import net.minecraft.block.state.pattern.FactoryBlockPattern;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.ai.EntityAIBase;
-import net.minecraft.entity.ai.EntityAIFindEntityNearest;
-import net.minecraft.entity.ai.EntityAITasks;
 import net.minecraft.entity.ai.EntityAITasks.EntityAITaskEntry;
-import net.minecraft.entity.monster.AbstractIllager;
-import net.minecraft.entity.monster.AbstractSkeleton;
-import net.minecraft.entity.monster.EntityPigZombie;
-import net.minecraft.entity.monster.EntitySlime;
-import net.minecraft.entity.monster.EntitySpider;
-import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
@@ -50,10 +39,10 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumHand;
 import net.minecraft.util.EnumParticleTypes;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraftforge.event.RegistryEvent;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -63,12 +52,8 @@ import net.minecraftforge.fml.common.registry.EntityEntry;
 public class EntityHelpers {
 
 	private static Map<MMDMaterial, BlockPattern> golemPatterns = null;
-	private static final Predicate<IBlockState> IS_PUMPKIN = new Predicate<IBlockState>() {
-		public boolean apply(@Nullable IBlockState iblockstate) {
-			return iblockstate != null
-					&& (iblockstate.getBlock() == Blocks.PUMPKIN || iblockstate.getBlock() == Blocks.LIT_PUMPKIN);
-		}
-	};
+	private static final Predicate<IBlockState> IS_PUMPKIN = 
+			i -> i != null && (i.getBlock() == Blocks.PUMPKIN || i.getBlock() == Blocks.LIT_PUMPKIN);
 
 	private EntityHelpers() {
 		// private constructor
@@ -164,135 +149,74 @@ public class EntityHelpers {
 			}
 		}
 	}
-	
-	/**	 
-	 * <br>Author: skyjay1
-	 * <br>From: Extra Golems 12.2
-	 * <br>Used with permission.
-	 **/
-	@SubscribeEvent
-	public static void onLivingSpawned(final EntityJoinWorldEvent event) {
-		// add custom 'attack golem' AI to hostile mobs. They already have this for regular iron golems
-		if(event.getEntity() instanceof EntityCreature) {
-			final EntityCreature creature = (EntityCreature) event.getEntity();
-			if (creatureAttacksGolems(creature)) {
-				for (final EntityAITasks.EntityAITaskEntry entry : creature.targetTasks.taskEntries) {
-					if (entry.action instanceof EntityCustomGolem.EntityAIAttackGolem) {
-						return;
-					}
-				}
-				creature.targetTasks.addTask(3, new EntityCustomGolem.EntityAIAttackGolem(creature));
-			}
-		// add custom 'chase golem' AI to hostile entities that do not inherit from EntityCreature
-		// (currently just EntitySlime)
-		} else if(event.getEntity() instanceof EntityLiving) {
-			final EntityLiving living = (EntityLiving) event.getEntity();
-			if (livingAttacksGolems(living)) {
-				living.targetTasks.addTask(3, new EntityAIFindEntityNearest(living, EntityCustomGolem.class));
-			}
-		}
-	}
-	
-	/** 
-	 * Returns true if this entity is an EntityCreature AND normally attacks Iron Golems 
-	 * <br>Author: skyjay1
-	 * <br>From: Extra Golems 12.2
-	 * <br>Used with permission.
-	 **/
-	private static boolean creatureAttacksGolems(EntityCreature e) {
-		return e instanceof AbstractSkeleton || e instanceof EntitySpider 
-				|| e instanceof AbstractIllager
-				|| (e instanceof EntityZombie && !(e instanceof EntityPigZombie));
-	}
-	
-	/** Returns true if this entity is any EntityLivingBase AND chases after Iron Golems 
-	 * <br>Author: skyjay1
-	 * <br>From: Extra Golems 12.2
-	 * <br>Used with permission.
-	 **/
-	private static boolean livingAttacksGolems(EntityLivingBase e) {
-		return e instanceof EntitySlime;
-	}
 		
-	/**
-	 * AFTER Entity has been spawned and placed in the world
-	 **/
-	public static void fireOnFirstSpawned(final EntityLiving entity) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasSpawnBehavior(entity))
-			.forEach(p -> p.onFirstSpawned(entity));
-	}
-
 	/**
 	 * AFTER all Entity update code has been processed.
 	 **/
-	public static void fireOnLivingUpdate(final EntityLiving entity) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasTickBehavior(entity))
+	public static void fireOnLivingUpdate(final EntityLiving entity, final ResourceLocation name) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.TICK)
 			.forEach(p -> p.onTick(entity));
 	}
 
 	/**
 	 * AFTER Entity attacks target.
 	 **/
-	public static void fireOnAttack(final EntityLiving entity, final Entity target) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasAttackBehavior(entity))
+	public static void fireOnAttack(final EntityLiving entity, final ResourceLocation name, final Entity target) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.ATTACK)
 			.forEach(p -> p.onAttackMob(entity, target));
 	}
 
 	/**
-	 * BEFORE Entity takes damage.
+	 * AFTER Entity takes damage.
 	 **/
-	public static void fireOnHurt(final EntityLiving entity, final DamageSource source, float amount) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasHurtBehavior(entity))
+	public static void fireOnHurt(final EntityLiving entity, final ResourceLocation name, final DamageSource source, float amount) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.HURT)
 			.forEach(p -> p.onHurt(entity, source, amount));
 	}
 
 	/**
 	 * BEFORE any death code has been processed
 	 **/
-	public static void fireOnDeath(final EntityLiving entity, final DamageSource cause) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasDeathBehavior(entity))
+	public static void fireOnDeath(final EntityLiving entity, final ResourceLocation name, final DamageSource cause) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.DEATH)
 			.forEach(p -> p.onDeath(entity, cause));
 	}
 	
 	/**
 	 * AFTER all Entity AI has already been loaded
 	 **/
-	public static void fireOnInitAI(final EntityLiving entity) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasCustomAI(entity))
+	public static void fireOnInitAI(final EntityLiving entity, final ResourceLocation name) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.AI)
 			.forEach(p -> p.onInitAI(entity));
 	}
 	
 	/**
 	 * AFTER all Entity NBT has already been written
 	 **/
-	public static void fireOnWriteNBT(final EntityLiving entity, final NBTTagCompound tag) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasNBTBehavior(entity))
+	public static void fireOnWriteNBT(final EntityLiving entity, final ResourceLocation name, final NBTTagCompound tag) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.NBT)
 			.forEach(p -> p.onWriteNBT(entity, tag));
 	}
 	
 	/**
 	 * AFTER all Entity NBT has already been read
 	 **/
-	public static void fireOnReadNBT(final EntityLiving entity, final NBTTagCompound tag) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasNBTBehavior(entity))
+	public static void fireOnReadNBT(final EntityLiving entity, final ResourceLocation name, final NBTTagCompound tag) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.NBT)
 			.forEach(p -> p.onReadNBT(entity, tag));
 	}
 	
 	/**
 	 * BEFORE any other interaction code has been processed
 	 **/
-	public static void fireOnPlayerInteract(final EntityLiving entity, final EntityPlayer player, final EnumHand hand) {
-		EntityProperties.getRegistry().getValuesCollection().stream()
-			.filter(p -> p.hasInteractBehavior(entity))
+	public static void fireOnPlayerInteract(final EntityLiving entity, final ResourceLocation name, final EntityPlayer player, final EnumHand hand) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.INTERACT)
 			.forEach(p -> p.onPlayerInteract(entity, player, hand));
+	}
+	
+	public static void fireOnFirstSpawned(final EntityLiving entity, final ResourceLocation name) {
+		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.SPAWN)
+			.forEach(p -> p.onFirstSpawned(entity));
 	}
 
 	/**

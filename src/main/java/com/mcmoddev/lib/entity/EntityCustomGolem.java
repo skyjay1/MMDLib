@@ -14,11 +14,9 @@ import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IEntityLivingData;
 import net.minecraft.entity.SharedMonsterAttributes;
-import net.minecraft.entity.ai.EntityAINearestAttackableTarget;
 import net.minecraft.entity.monster.EntityIronGolem;
 import net.minecraft.init.MobEffects;
 import net.minecraft.init.SoundEvents;
@@ -37,9 +35,7 @@ import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.village.Village;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
-import net.minecraft.world.storage.loot.LootTableList;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
 public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem>, IMMDObject {
 	
@@ -48,7 +44,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	private static final byte KEY_ATTACK = (byte)24;
 	
 	private GolemContainer container = GolemContainer.EMPTY_GOLEM_CONTAINER;
-	private int attackTimer2;
 
 	public EntityCustomGolem(final World world) {
 		super(world);
@@ -81,7 +76,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(cont.getMoveSpeed());
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
-		EntityHelpers.fireOnInitAI(this);
+		EntityHelpers.fireOnInitAI(this, this.container.getEntityName());
 	}
 
 	@Override
@@ -109,12 +104,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	}
 
 	@Override
-	protected int decreaseAirSupply(int air) {
-		// TODO should we allow golems to drown?
-		return super.decreaseAirSupply(air);
-	}
-
-	@Override
 	protected void collideWithEntity(final Entity entityIn) {
 		super.collideWithEntity(entityIn);
 	}
@@ -122,15 +111,16 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	public void onLivingUpdate() {
 		super.onLivingUpdate();
-		if (this.attackTimer2 > 0) {
-			--this.attackTimer2;
-		}
-		EntityHelpers.fireOnLivingUpdate(this);
+		EntityHelpers.fireOnLivingUpdate(this, this.container.getEntityName());
 	}
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		return EntityHelpers.fireOnHurt(this, source, amount) && super.attackEntityFrom(source, amount);
+		if(super.attackEntityFrom(source, amount)) {
+			EntityHelpers.fireOnHurt(this, this.container.getEntityName(), source, amount);
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -148,9 +138,9 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
 		if(this.getContainer() != null) {
-			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName().toString());
 		}
-		EntityHelpers.fireOnWriteNBT(this, compound);
+		EntityHelpers.fireOnWriteNBT(this, this.container.getEntityName(), compound);
 	}
 	
 	@Override
@@ -160,95 +150,62 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 			final String name = compound.getString(KEY_CONTAINER_NAME);
 			this.setContainer(Entities.getEntityContainer(name));
 		}
-		EntityHelpers.fireOnReadNBT(this, compound);
+		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}
 
 	@Override
 	public boolean attackEntityAsMob(final Entity entityIn) {
-		if(super.attackEntityAsMob(entityIn)) {
-			this.attackTimer2 = 10;
-			this.world.setEntityState(this, KEY_ATTACK);
-			final float baseAttack = (float)this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).getAttributeValue();
-			boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 
-					baseAttack + this.rand.nextInt(Math.max(2, (int)(baseAttack * 2.0F))));
+		
+		final float baseAttack = (float)this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).getAttributeValue();
+		boolean flag = entityIn.attackEntityFrom(DamageSource.causeMobDamage(this), 
+				baseAttack + this.rand.nextInt(Math.max(2, (int)(baseAttack * 2.0F))));
+		// use reflection to reset 'attackTimer' field
+		ReflectionHelper.setPrivateValue(EntityIronGolem.class, this, 10, "field_70855_f", "attackTimer");
+		this.world.setEntityState(this, KEY_ATTACK);
 
-			if (flag) {
-				entityIn.motionY += 0.4000000059604645D;
-				this.applyEnchantments(this, entityIn);
-				EntityHelpers.fireOnAttack(this, entityIn);
-			}
-			this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
-			return flag;
+		if (flag) {
+			entityIn.motionY += 0.4000000059604645D;
+			this.applyEnchantments(this, entityIn);
+			EntityHelpers.fireOnAttack(this, this.container.getEntityName(), entityIn);
 		}
-		return false;
-	}
-
-	@SideOnly(Side.CLIENT)
-	@Override
-	public void handleStatusUpdate(final byte id) {
-		if (id == KEY_ATTACK) {
-			this.attackTimer2 = 10;
-			this.playSound(SoundEvents.ENTITY_IRONGOLEM_ATTACK, 1.0F, 1.0F);
-		}
-		super.handleStatusUpdate(id);
+		this.playSound(getAttackSound(), 1.0F, 0.9F + rand.nextFloat() * 0.2F);
+		return flag;
 	}
 
 	@Override
-	public Village getVillage() {
-		return super.getVillage();
+	@Nullable
+	protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
+		return container.getHurtSound();
 	}
 
 	@Override
-	@SideOnly(Side.CLIENT)
-	public int getAttackTimer() {
-		return attackTimer2;
-	}
-
-	@Override
-	public void setHoldingRose(final boolean holdingRose) {
-		super.setHoldingRose(holdingRose);
-	}
-
-	@Override
-	protected SoundEvent getHurtSound(final DamageSource damageSourceIn) {
-		// TODO add sound to EntityContainer
-		return super.getHurtSound(damageSourceIn);
-	}
-
-	@Override
+	@Nullable
 	protected SoundEvent getDeathSound() {
-		return super.getDeathSound();
+		return container.getDeathSound();
+	}
+	
+	protected SoundEvent getStepSound() {
+		return container.getLivingSound();
+	}
+	
+	protected SoundEvent getAttackSound() {
+		return container.getLivingSound();
 	}
 
 	@Override
 	protected void playStepSound(final BlockPos pos, final Block blockIn) {
-		super.playStepSound(pos, blockIn);
+		this.playSound(getStepSound(), 1.0F, 0.9F + rand.nextFloat() * 0.2F);
 	}
 
 	@Nullable
 	@Override
 	protected ResourceLocation getLootTable() {
-		return this.container != null ? this.container.getLootTable() : LootTableList.EMPTY;
-	}
-
-	@Override
-	public int getHoldRoseTick() {
-		return super.getHoldRoseTick();
-	}
-
-	@Override
-	public boolean isPlayerCreated() {
-		return super.isPlayerCreated();
-	}
-
-	@Override
-	public void setPlayerCreated(final boolean playerCreated) {
-		super.setPlayerCreated(playerCreated);
+		return this.container.getLootTable();
 	}
 
 	@Override
 	public void onDeath(final DamageSource cause) {
-		EntityHelpers.fireOnDeath(this, cause);
+		EntityHelpers.fireOnDeath(this, this.container.getEntityName(), cause);
 		super.onDeath(cause);
 	}
 	
@@ -270,14 +227,11 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 			if (i > 0) {
 				this.playSound(this.getFallSound(i), 1.0F, 1.0F);
 				this.attackEntityFrom(DamageSource.FALL, (float) i);
-				int j = MathHelper.floor(this.posX);
-				int k = MathHelper.floor(this.posY - 0.20000000298023224D);
-				int l = MathHelper.floor(this.posZ);
-				IBlockState iblockstate = this.world.getBlockState(new BlockPos(j, k, l));
+				final BlockPos blockBelow = getBlockBelow();
+				IBlockState iblockstate = this.world.getBlockState(blockBelow);
 
 				if (iblockstate.getMaterial() != Material.AIR) {
-					SoundType soundtype = iblockstate.getBlock().getSoundType(iblockstate, world, new BlockPos(j, k, l),
-							this);
+					SoundType soundtype = iblockstate.getBlock().getSoundType(iblockstate, world, blockBelow, this);
 					this.playSound(soundtype.getFallSound(), soundtype.getVolume() * 0.5F,
 							soundtype.getPitch() * 0.75F);
 				}
@@ -289,7 +243,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Nullable
 	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
 		livingdata = super.onInitialSpawn(difficulty, livingdata);
-		EntityHelpers.fireOnFirstSpawned(this);
+		EntityHelpers.fireOnFirstSpawned(this, this.container.getEntityName());
 		return livingdata;
 	}
 
@@ -300,7 +254,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	 */
 	@Override
 	public ItemStack getPickedResult(final RayTraceResult target) {
-		if(this.container != null && this.container.getMMDMaterial().hasBlock(Names.BLOCK)) {
+		if(this.container.getMMDMaterial().hasBlock(Names.BLOCK)) {
 			return this.container.getMMDMaterial().getItemStack(Names.BLOCK);
 		}
 		return super.getPickedResult(target);
@@ -317,13 +271,13 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	
 	@Override
 	public MMDMaterial getMMDMaterial() {
-		return this.container != null ? this.container.getMMDMaterial() : Materials.EMPTY;
+		return this.container.getMMDMaterial();
 	}
 	
 	@Override
 	public void setContainer(final EntityContainer containerIn) {
 		if(containerIn != null) {
-			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}
 	}
 	
@@ -336,11 +290,12 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	public EntityCustomGolem getEntity() {
 		return this;
 	}
-	
-	public static final class EntityAIAttackGolem extends EntityAINearestAttackableTarget<EntityCustomGolem> {
-		public EntityAIAttackGolem(final EntityCreature creature) {
-			super(creature, EntityCustomGolem.class, true);
-		}
+
+	protected BlockPos getBlockBelow() {
+		int j = MathHelper.floor(this.posX);
+		int k = MathHelper.floor(this.posY - 0.20000000298023224D);
+		int l = MathHelper.floor(this.posZ);
+		return new BlockPos(j, k, l);
 	}
 
 }

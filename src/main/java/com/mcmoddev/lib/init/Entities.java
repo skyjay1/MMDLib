@@ -145,16 +145,17 @@ public class Entities {
 	}
 	
 	public static final String makeKey(final EntityContainer container) {
+		final String modid = Loader.instance().activeModContainer().getModId().concat(":");
 		if(container instanceof GolemContainer) {
-			return makeGolemKey(((GolemContainer)container).getMMDMaterial());
+			return modid.concat(makeGolemKey(((GolemContainer)container).getMMDMaterial()));
 		}
 		if(container instanceof AnimalContainer) {
-			return PREFIX_ANIMAL.concat(container.getEntityName());
+			return modid.concat(PREFIX_ANIMAL.concat(container.getEntityName()));
 		}
 		if(container instanceof MobContainer) {
-			return PREFIX_MOB.concat(container.getEntityName());
+			return modid.concat(PREFIX_MOB.concat(container.getEntityName()));
 		}
-		return container.getEntityName();
+		return modid.concat(container.getEntityName());
 	}
 	
 	public static final String makeGolemKey(final MMDMaterial material) {

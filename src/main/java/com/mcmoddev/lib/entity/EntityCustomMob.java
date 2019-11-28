@@ -32,11 +32,11 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
-import net.minecraft.world.storage.loot.LootTableList;
 
 public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCustomMob> {
 
-	protected static final DataParameter<String> CONTAINER_NAME = EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
+	protected static final DataParameter<String> CONTAINER_NAME = 
+			EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
 	private static final String KEY_CONTAINER_NAME = "ContainerName";
 	private MobContainer container = MobContainer.EMPTY_MOB_CONTAINER;
 	
@@ -88,7 +88,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 			break;
 		}
 		
-		EntityHelpers.fireOnInitAI(this);
+		EntityHelpers.fireOnInitAI(this, this.container.getEntityName());
 	}
 	
 	@Override
@@ -109,7 +109,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 
 	@Override
 	public boolean processInteract(EntityPlayer player, EnumHand hand) {
-		EntityHelpers.fireOnPlayerInteract(this, player, hand);
+		EntityHelpers.fireOnPlayerInteract(this, this.container.getEntityName(), player, hand);
 		return super.processInteract(player, hand);
 	}
 
@@ -121,7 +121,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 			if (this.getHeldItemMainhand().isEmpty() && this.isBurning() && this.rand.nextFloat() < f * 0.3F) {
 				entityIn.setFire(2 * (int) f);
 			}
-			EntityHelpers.fireOnAttack(this, entityIn);
+			EntityHelpers.fireOnAttack(this, this.container.getEntityName(), entityIn);
 			return true;
 		}
 		return false;
@@ -130,7 +130,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 	@Nullable
 	@Override
 	protected ResourceLocation getLootTable() {
-		return this.container != null ? this.container.getLootTable() : LootTableList.EMPTY;
+		return this.container.getLootTable();
 	}
 
 	@Override
@@ -163,18 +163,21 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 		}
 
 		super.onLivingUpdate();
-		EntityHelpers.fireOnLivingUpdate(this);
+		EntityHelpers.fireOnLivingUpdate(this, this.container.getEntityName());
 	}
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		EntityHelpers.fireOnHurt(this, source, amount);
-		return super.attackEntityFrom(source, amount);
+		if(super.attackEntityFrom(source, amount)) {
+			EntityHelpers.fireOnHurt(this, this.container.getEntityName(), source, amount);
+			return true;
+		}
+		return false;
 	}
 	
 	@Override
 	public void onDeath(final DamageSource cause) {
-		EntityHelpers.fireOnDeath(this, cause);
+		EntityHelpers.fireOnDeath(this, this.container.getEntityName(), cause);
 		super.onDeath(cause);
 	}
 	
@@ -182,9 +185,9 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
 		if(this.getContainer() != null) {
-			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName().toString());
 		}
-		EntityHelpers.fireOnWriteNBT(this, compound);
+		EntityHelpers.fireOnWriteNBT(this, this.container.getEntityName(), compound);
 	}
 	
 	@Override
@@ -194,14 +197,14 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 			final String name = compound.getString(KEY_CONTAINER_NAME);
 			this.setContainer(Entities.getEntityContainer(name));
 		}
-		EntityHelpers.fireOnReadNBT(this, compound);
+		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}
 	
 	@Override
 	@Nullable
 	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
 		livingdata = super.onInitialSpawn(difficulty, livingdata);
-		EntityHelpers.fireOnFirstSpawned(this);
+		EntityHelpers.fireOnFirstSpawned(this, this.container.getEntityName());
 		return livingdata;
 	}
 	
@@ -222,7 +225,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 	@Override
 	public void setContainer(EntityContainer containerIn) {
 		if(containerIn != null) {
-			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}
 	}
 

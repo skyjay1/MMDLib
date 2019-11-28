@@ -62,8 +62,8 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
 		// add AI
-		EntityHelpers.addTaskIfAbsent(this, 4, new EntityAIFollowParent(this, cont.getMoveSpeed() + 1.0D));
-		EntityHelpers.addTaskIfAbsent(this, 5, new EntityAIWanderAvoidWater(this, cont.getMoveSpeed() * 4.0D));
+		EntityHelpers.addTaskIfAbsent(this, 4, new EntityAIFollowParent(this, 1.2D));
+		EntityHelpers.addTaskIfAbsent(this, 5, new EntityAIWanderAvoidWater(this, 0.7D));
 		EntityHelpers.addTaskIfAbsent(this, 6, new EntityAIWatchClosest(this, EntityPlayer.class, 6.0F));
 		EntityHelpers.addTaskIfAbsent(this, 7, new EntityAILookIdle(this));
         // add optional AI
@@ -71,8 +71,8 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 			 EntityHelpers.addTaskIfAbsent(this, 0, new EntityAISwimming(this));
 		}
 		if(cont.hasTemptItem()) {
-			EntityHelpers.addTaskIfAbsent(this, 3, new EntityAITempt(this, cont.getMoveSpeed() * 5.0D, cont.getTemptItem(), false));
-			EntityHelpers.addTaskIfAbsent(this, 2, new EntityAIMate(this, cont.getMoveSpeed() * 4.0D));
+			EntityHelpers.addTaskIfAbsent(this, 3, new EntityAITempt(this, 1.0D, cont.getTemptItem(), false));
+			EntityHelpers.addTaskIfAbsent(this, 2, new EntityAIMate(this, 1.0D));
 		}
 		// add hostility level
 		switch(cont.getHostility()) {
@@ -84,11 +84,11 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 			EntityHelpers.addTaskIfAbsent(this, 5, new EntityAIAttackMelee(this, 1.0D, true));
 			break;
 		case PASSIVE: default:
-			EntityHelpers.addTaskIfAbsent(this, 1, new EntityAIPanic(this, cont.getMoveSpeed() * 8.0D));
+			EntityHelpers.addTaskIfAbsent(this, 1, new EntityAIPanic(this, 1.2D));
 			break;
 		}
 		
-		EntityHelpers.fireOnInitAI(this);
+		EntityHelpers.fireOnInitAI(this, this.container.getEntityName());
 	}
 	
 	@Override
@@ -109,14 +109,14 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 
 	@Override
 	public boolean processInteract(EntityPlayer player, EnumHand hand) {
-		EntityHelpers.fireOnPlayerInteract(this, player, hand);
+		EntityHelpers.fireOnPlayerInteract(this, this.container.getEntityName(), player, hand);
 		return super.processInteract(player, hand);
 	}
 
 	@Override
 	public boolean attackEntityAsMob(final Entity entityIn) {
 		if(super.attackEntityAsMob(entityIn)) {
-			EntityHelpers.fireOnAttack(this, entityIn);
+			EntityHelpers.fireOnAttack(this, this.container.getEntityName(), entityIn);
 			return true;
 		}
 		return false;
@@ -125,24 +125,24 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 	@Nullable
 	@Override
 	protected ResourceLocation getLootTable() {
-		return this.container != null ? this.container.getLootTable() : LootTableList.EMPTY;
+		return this.container.getLootTable();
 	}
 	
 	@Override
 	public void onLivingUpdate() {
 		super.onLivingUpdate();
-		EntityHelpers.fireOnLivingUpdate(this);
+		EntityHelpers.fireOnLivingUpdate(this, this.container.getEntityName());
 	}
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		EntityHelpers.fireOnHurt(this, source, amount);
+		EntityHelpers.fireOnHurt(this, this.container.getEntityName(), source, amount);
 		return super.attackEntityFrom(source, amount);
 	}
 	
 	@Override
 	public void onDeath(final DamageSource cause) {
-		EntityHelpers.fireOnDeath(this, cause);
+		EntityHelpers.fireOnDeath(this, this.container.getEntityName(), cause);
 		super.onDeath(cause);
 	}
 	
@@ -150,9 +150,9 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 	public void writeEntityToNBT(final NBTTagCompound compound) {
 		super.writeEntityToNBT(compound);
 		if(this.getContainer() != null) {
-			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName());
+			compound.setString(KEY_CONTAINER_NAME, this.getContainer().getEntityName().toString());
 		}
-		EntityHelpers.fireOnWriteNBT(this, compound);
+		EntityHelpers.fireOnWriteNBT(this, this.container.getEntityName(), compound);
 	}
 	
 	@Override
@@ -162,14 +162,14 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 			final String name = compound.getString(KEY_CONTAINER_NAME);
 			this.setContainer(Entities.getEntityContainer(name));
 		}
-		EntityHelpers.fireOnReadNBT(this, compound);
+		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}
 	
 	@Override
 	@Nullable
 	public IEntityLivingData onInitialSpawn(DifficultyInstance difficulty, @Nullable IEntityLivingData livingdata) {
 		livingdata = super.onInitialSpawn(difficulty, livingdata);
-		EntityHelpers.fireOnFirstSpawned(this);
+		EntityHelpers.fireOnFirstSpawned(this, this.container.getEntityName());
 		return livingdata;
 	}
 	
@@ -197,7 +197,7 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 	@Override
 	public void setContainer(EntityContainer containerIn) {
 		if(containerIn != null) {
-			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName());
+			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}
 	}
 
