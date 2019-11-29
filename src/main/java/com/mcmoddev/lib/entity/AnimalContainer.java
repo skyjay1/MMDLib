@@ -5,6 +5,7 @@ import com.mcmoddev.lib.init.Entities;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 
 /**
  * Must be created using the {@link AnimalContainer.Builder} and should
@@ -17,12 +18,14 @@ public class AnimalContainer extends EntityContainer {
 
 	protected final Item temptItem;
 	
-	protected AnimalContainer(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn, 
+	protected AnimalContainer(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn, 
 			final ResourceLocation textureIn, final ResourceLocation lootTableIn, final EntityContainer.MobHostility attitudeIn, 
-			final boolean canSwimIn, final Item temptItemIn,
-			final double healthIn, final double attackIn, final double walkSpeedIn, 
+			final boolean canSwimIn, final SoundEvent livingSoundIn, final SoundEvent hurtSoundIn, final SoundEvent deathSoundIn,
+			final Item temptItemIn,	final double healthIn, final double attackIn, final double walkSpeedIn, 
 			final double knockbackResistIn) {
-		super(entityClassIn, entityNameIn, textureIn, lootTableIn, attitudeIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
+		super(entityClassIn, entityNameIn, textureIn, lootTableIn, attitudeIn, 
+				livingSoundIn, hurtSoundIn, deathSoundIn, canSwimIn, 
+				healthIn, attackIn, walkSpeedIn, knockbackResistIn);
 		this.temptItem = temptItemIn;
 	}
 	
@@ -42,7 +45,8 @@ public class AnimalContainer extends EntityContainer {
 		protected Item temptItem = null;
 		
 		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
-			super(entityClassIn, Entities.PREFIX_ANIMAL.concat(entityNameIn));
+			super(entityClassIn, entityNameIn);
+			this.setHostility(MobHostility.PASSIVE);
 		} 
 		
 		/**
@@ -64,7 +68,8 @@ public class AnimalContainer extends EntityContainer {
 		@Override
 		public AnimalContainer build() {
 			return new AnimalContainer(entityClass, entityName, texture, lootTable, attitude, 
-					canSwim, temptItem, health, attack, walkSpeed, knockbackResist);
+					canSwim, livingSound, hurtSound, deathSound, temptItem, 
+					health, attack, walkSpeed, knockbackResist);
 		}
 		
 		public static AnimalContainer.Builder create(final String name) {

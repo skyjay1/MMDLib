@@ -6,6 +6,7 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.world.storage.loot.LootTableList;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.registries.IForgeRegistryEntry;
 
 /**
@@ -32,8 +33,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 	protected EntityContainer(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn, 
 			final ResourceLocation textureIn, final ResourceLocation lootTableIn, final MobHostility attitudeIn, 
 			final SoundEvent livingSoundIn, final SoundEvent hurtSoundIn, final SoundEvent deathSoundIn,
-			final boolean canSwimIn,
-			final double healthIn, final double attackIn, final double walkSpeedIn, 
+			final boolean canSwimIn, final double healthIn, final double attackIn, final double walkSpeedIn, 
 			final double knockbackResistIn) {
 		this.entityClass = entityClassIn;
 		this.entityName = entityNameIn;
@@ -100,7 +100,8 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		
 		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
 			this.entityClass = entityClassIn;
-			this.entityName = new ResourceLocation(entityNameIn);
+			final String modid = Loader.instance().activeModContainer().getModId();
+			this.entityName = new ResourceLocation(modid, entityNameIn);
 		} 
 		
 		/**
@@ -258,7 +259,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 	 **/
 	public enum MobHostility {
 		/**
-		 * Does not react when attacked by player.
+		 * Does not retaliate when attacked by player.
 		 **/
 		PASSIVE,
 		/**

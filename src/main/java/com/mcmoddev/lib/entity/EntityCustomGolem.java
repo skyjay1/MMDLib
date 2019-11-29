@@ -55,7 +55,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		if(CONTAINER_NAME.equals(key)) {
 			final String containerName = this.getDataManager().get(CONTAINER_NAME);
 			// make sure a container is registered for this material
-			final GolemContainer cont = Entities.getEntityContainer(containerName);
+			final GolemContainer cont = Entities.getEntityContainer(new ResourceLocation(containerName));
 			if(cont != null) {
 				// actually use the container to update golem stats
 				this.updateContainerStats(cont);
@@ -87,7 +87,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	@Override
 	protected void entityInit() {
 		super.entityInit();
-		this.dataManager.register(CONTAINER_NAME, Entities.makeGolemKey(Materials.EMPTY));
+		this.dataManager.register(CONTAINER_NAME, Entities.PREFIX_GOLEM.concat(Materials.EMPTY.getName()));
 	}
 
 	@Override
@@ -148,7 +148,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		super.readEntityFromNBT(compound);
 		if(compound.hasKey(KEY_CONTAINER_NAME)) {
 			final String name = compound.getString(KEY_CONTAINER_NAME);
-			this.setContainer(Entities.getEntityContainer(name));
+			this.setContainer(Entities.getEntityContainer(new ResourceLocation(name)));
 		}
 		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}
@@ -173,13 +173,11 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	}
 
 	@Override
-	@Nullable
 	protected SoundEvent getHurtSound(DamageSource damageSourceIn) {
 		return container.getHurtSound();
 	}
 
 	@Override
-	@Nullable
 	protected SoundEvent getDeathSound() {
 		return container.getDeathSound();
 	}

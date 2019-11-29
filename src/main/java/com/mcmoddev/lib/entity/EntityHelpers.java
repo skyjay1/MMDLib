@@ -247,22 +247,23 @@ public class EntityHelpers {
 			}
 			// create the entity golem
 			BlockPos blockpos = patternHelper.translateOffset(1, 2, 0).getPos();
-			EntityCustomGolem entityirongolem = (EntityCustomGolem) EntityList.newEntity(EntityCustomGolem.class,
+			EntityCustomGolem entitycustomgolem = (EntityCustomGolem) EntityList.newEntity(EntityCustomGolem.class,
 					worldIn);
-			entityirongolem.setPlayerCreated(true);
-			entityirongolem.setLocationAndAngles((double) blockpos.getX() + 0.5D, (double) blockpos.getY() + 0.05D,
+			entitycustomgolem.setPlayerCreated(true);
+			entitycustomgolem.setLocationAndAngles((double) blockpos.getX() + 0.5D, (double) blockpos.getY() + 0.05D,
 					(double) blockpos.getZ() + 0.5D, 0.0F, 0.0F);
-			final String key = Entities.makeGolemKey(material);
+			final ResourceLocation key = new ResourceLocation(material.getRegistryName().getNamespace(), 
+					Entities.PREFIX_GOLEM.concat(material.getName()));
 			if (Entities.hasEntityContainer(key)) {
-				entityirongolem.setContainer(Entities.getEntityContainer(key));
+				entitycustomgolem.setContainer(Entities.getEntityContainer(key));
 			} else {
 				com.mcmoddev.lib.MMDLib.logger
 						.error("Somehow failed to get the GolemContainer after using the GolemContainer? wtf?");
 			}
 			// trigger acheivements
 			for (EntityPlayerMP entityplayermp1 : worldIn.getEntitiesWithinAABB(EntityPlayerMP.class,
-					entityirongolem.getEntityBoundingBox().grow(5.0D))) {
-				CriteriaTriggers.SUMMONED_ENTITY.trigger(entityplayermp1, entityirongolem);
+					entitycustomgolem.getEntityBoundingBox().grow(5.0D))) {
+				CriteriaTriggers.SUMMONED_ENTITY.trigger(entityplayermp1, entitycustomgolem);
 			}
 			// spawn particles
 			for (int j1 = 0; j1 < 120; ++j1) {
@@ -278,7 +279,7 @@ public class EntityHelpers {
 				}
 			}
 			// return the golem, ready to spawn
-			return entityirongolem;
+			return entitycustomgolem;
 		}
 		return null;
 	}

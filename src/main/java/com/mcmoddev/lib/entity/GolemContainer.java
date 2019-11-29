@@ -36,14 +36,15 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 	private final boolean fallDamage;
 	private final float[] colorRGBA = new float[4];
 	
-	protected GolemContainer(final Class<? extends EntityLiving> entityClassIn, final String nameIn,
+	protected GolemContainer(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation nameIn,
 			final MMDMaterial materialIn, final ResourceLocation textureIn,
 			final ResourceLocation lootTableIn, final MobHostility attitudeIn,
 			final SoundEvent livingSoundIn, final SoundEvent hurtSoundIn, final SoundEvent deathSoundIn,
 			final boolean canSwimIn, final boolean hasTintIn, final boolean fallDamageIn, 
 			final double healthIn, final double attackIn, 
 			final double walkSpeedIn, final double knockbackResistIn) {
-		super(entityClassIn, nameIn, textureIn, lootTableIn, attitudeIn, livingSoundIn, hurtSoundIn, deathSoundIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
+		super(entityClassIn, nameIn, textureIn, lootTableIn, attitudeIn, livingSoundIn, hurtSoundIn, deathSoundIn, 
+				canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
 		this.material = materialIn;
 		this.hasTint = hasTintIn;
 		this.fallDamage = fallDamageIn;
@@ -86,7 +87,7 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		protected boolean fallDamage = false;
 		
 		public Builder(final MMDMaterial mat) {
-			super(EntityCustomGolem.class, Entities.makeGolemKey(mat));
+			super(EntityCustomGolem.class, Entities.PREFIX_GOLEM.concat(mat.getName()));
 			// set defaults
 			this.material = mat;
 			this.knockbackResist = 0.8D;

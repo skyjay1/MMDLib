@@ -47,7 +47,7 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 	@Override
 	protected void entityInit() {
 		super.entityInit();
-		this.dataManager.register(CONTAINER_NAME, Entities.makeKey(AnimalContainer.EMPTY_ANIMAL_CONTAINER));
+		this.dataManager.register(CONTAINER_NAME, AnimalContainer.EMPTY_ANIMAL_CONTAINER.getEntityName().toString());
 	}
 	
 	/**
@@ -97,7 +97,7 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 		if(CONTAINER_NAME.equals(key)) {
 			final String containerName = this.getDataManager().get(CONTAINER_NAME);
 			// make sure a container is registered for this material
-			final AnimalContainer cont = Entities.getEntityContainer(containerName);
+			final AnimalContainer cont = Entities.getEntityContainer(new ResourceLocation(containerName));
 			if(cont != null) {
 				// actually use the container to update animal stats
 				this.updateContainerStats(cont);
@@ -136,8 +136,11 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 
 	@Override
 	public boolean attackEntityFrom(DamageSource source, float amount) {
-		EntityHelpers.fireOnHurt(this, this.container.getEntityName(), source, amount);
-		return super.attackEntityFrom(source, amount);
+		if(super.attackEntityFrom(source, amount)) {
+			EntityHelpers.fireOnHurt(this, this.container.getEntityName(), source, amount);
+			return true;
+		}
+		return false;
 	}
 	
 	@Override
@@ -160,7 +163,7 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 		super.readEntityFromNBT(compound);
 		if(compound.hasKey(KEY_CONTAINER_NAME)) {
 			final String name = compound.getString(KEY_CONTAINER_NAME);
-			this.setContainer(Entities.getEntityContainer(name));
+			this.setContainer(Entities.getEntityContainer(new ResourceLocation(name)));
 		}
 		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}

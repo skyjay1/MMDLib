@@ -4,6 +4,7 @@ import com.mcmoddev.lib.init.Entities;
 
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 
 /**
  * Must be created using the {@link MobContainer.Builder} and should
@@ -17,12 +18,15 @@ public class MobContainer extends EntityContainer {
 	protected final boolean burnInDay;
 	protected final boolean leapsAtTarget;
 	
-	protected MobContainer(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn, 
+	protected MobContainer(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn, 
 			final ResourceLocation textureIn, final ResourceLocation lootTableIn,
-			final EntityContainer.MobHostility attitudeIn, final boolean canSwimIn, final boolean burnInDayIn,
-			final boolean leapsAtTargetIn, final double healthIn, final double attackIn, final double walkSpeedIn, 
-			final double knockbackResistIn) {
-		super(entityClassIn, entityNameIn, textureIn, lootTableIn, attitudeIn, canSwimIn, healthIn, attackIn, walkSpeedIn, knockbackResistIn);
+			final EntityContainer.MobHostility attitudeIn, final boolean canSwimIn, 
+			final SoundEvent livingSoundIn, final SoundEvent hurtSoundIn, final SoundEvent deathSoundIn,
+			final boolean burnInDayIn, final boolean leapsAtTargetIn, final double healthIn, final double attackIn, 
+			final double walkSpeedIn, final double knockbackResistIn) {
+		super(entityClassIn, entityNameIn, textureIn, lootTableIn, attitudeIn, 
+				livingSoundIn, hurtSoundIn, deathSoundIn, canSwimIn, 
+				healthIn, attackIn, walkSpeedIn, knockbackResistIn);
 		this.burnInDay = burnInDayIn;
 		this.leapsAtTarget = leapsAtTargetIn;
 	}
@@ -45,7 +49,7 @@ public class MobContainer extends EntityContainer {
 		protected boolean leapsAtTarget = false;
 		
 		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
-			super(entityClassIn, Entities.PREFIX_MOB.concat(entityNameIn));
+			super(entityClassIn, entityNameIn);
 			this.attitude = MobHostility.HOSTILE;
 		} 
 		
@@ -76,7 +80,8 @@ public class MobContainer extends EntityContainer {
 		@Override
 		public MobContainer build() {
 			return new MobContainer(entityClass, entityName, texture, lootTable, attitude, 
-					canSwim, burnInDay, leapsAtTarget, health, attack, walkSpeed, knockbackResist);
+					canSwim, livingSound, hurtSound, deathSound, burnInDay, leapsAtTarget, 
+					health, attack, walkSpeed, knockbackResist);
 		}
 		
 		public static MobContainer.Builder create(final String name) {
