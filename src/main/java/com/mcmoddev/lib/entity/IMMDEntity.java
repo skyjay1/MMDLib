@@ -1,15 +1,19 @@
 package com.mcmoddev.lib.entity;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.ai.EntityAIBase;
-import net.minecraft.entity.ai.EntityAITasks.EntityAITaskEntry;
+import com.mcmoddev.lib.init.Entities;
 
-public interface IMMDEntity<T extends Entity> {
+import net.minecraft.entity.Entity;
+import net.minecraft.util.ResourceLocation;
+
+public interface IMMDEntity<T extends Entity, M extends EntityContainer> {
 	
 	T getEntity();
 	
-	void setContainer(final EntityContainer containerIn);
+	void setContainer(final M containerIn);
 	
-	EntityContainer getContainer();
+	M getContainer();
+	
+	default M findContainer(final String name) {
+		return Entities.getEntityContainer(new ResourceLocation(name));
+	}
 }

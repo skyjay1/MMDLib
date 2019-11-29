@@ -33,11 +33,11 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
 
-public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCustomMob> {
+public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCustomMob, MobContainer> {
 
 	protected static final DataParameter<String> CONTAINER_NAME = 
 			EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
-	private static final String KEY_CONTAINER_NAME = "ContainerName";
+	private static final String KEY_CONTAINER_NAME = "containername";
 	private MobContainer container = MobContainer.EMPTY_MOB_CONTAINER;
 	
 	public EntityCustomMob(World worldIn) {
@@ -223,7 +223,7 @@ public class EntityCustomMob extends EntityMob implements IMMDEntity<EntityCusto
 	}
 
 	@Override
-	public void setContainer(EntityContainer containerIn) {
+	public void setContainer(MobContainer containerIn) {
 		if(containerIn != null) {
 			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}

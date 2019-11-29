@@ -17,9 +17,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.IEntityLivingData;
 import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.EntityAISwimming;
 import net.minecraft.entity.monster.EntityIronGolem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.MobEffects;
-import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
@@ -27,21 +28,23 @@ import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.DamageSource;
+import net.minecraft.util.EnumActionResult;
+import net.minecraft.util.EnumHand;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.village.Village;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 
-public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem>, IMMDObject {
+public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<EntityCustomGolem, GolemContainer>, IMMDObject {
 	
 	protected static final DataParameter<String> CONTAINER_NAME = EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
-	private static final String KEY_CONTAINER_NAME = "ContainerName";
-	private static final byte KEY_ATTACK = (byte)24;
+	private static final String KEY_CONTAINER_NAME = "containername";
+	private static final byte KEY_ATTACK = (byte)4;
 	
 	private GolemContainer container = GolemContainer.EMPTY_GOLEM_CONTAINER;
 
@@ -60,7 +63,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 				// actually use the container to update golem stats
 				this.updateContainerStats(cont);
 			} else {
-				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no GolemContainer was found with name '%s'", containerName);
+				com.mcmoddev.lib.MMDLib.logger.error("Failed to update golem stats - no GolemContainer was found with name '" + containerName + "'");
 			}
 		}
 	}
@@ -76,9 +79,27 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		this.getEntityAttribute(SharedMonsterAttributes.MOVEMENT_SPEED).setBaseValue(cont.getMoveSpeed());
 		this.getEntityAttribute(SharedMonsterAttributes.KNOCKBACK_RESISTANCE).setBaseValue(cont.getKnockbackResist());
 		this.getEntityAttribute(SharedMonsterAttributes.ATTACK_DAMAGE).setBaseValue(cont.getAttack());
-		EntityHelpers.fireOnInitAI(this, this.container.getEntityName());
+		 // add optional AI
+		if(this.isServerWorld()) {
+			if(cont.canSwim()) {
+				 EntityHelpers.addTaskIfAbsent(this, 0, new EntityAISwimming(this));
+			} else {
+				EntityHelpers.removeTaskIfPresent(this, EntityAISwimming.class);
+			}
+			EntityHelpers.fireOnInitAI(this, this.container.getEntityName());
+		}
 	}
 
+	@Override
+	public EnumActionResult applyPlayerInteraction(final EntityPlayer player, final Vec3d vec, final EnumHand hand) {
+		EntityHelpers.fireOnPlayerInteract(this, this.container.getRegistryName(), player, hand);
+		// DEBUG
+		this.setContainer(this.findContainer("mmdlib:golem_gold"));
+		
+		
+		return super.applyPlayerInteraction(player, vec, hand);
+	}
+	
 	@Override
 	protected void initEntityAI() {
 		super.initEntityAI();
@@ -88,13 +109,6 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	protected void entityInit() {
 		super.entityInit();
 		this.dataManager.register(CONTAINER_NAME, Entities.PREFIX_GOLEM.concat(Materials.EMPTY.getName()));
-	}
-
-	@Override
-	protected void updateAITasks() {
-		// TODO maybe add a hook for custom EntityAI update tasks? We'll see
-
-		super.updateAITasks();
 	}
 
 	@Override
@@ -110,6 +124,10 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 
 	@Override
 	public void onLivingUpdate() {
+		if(this.ticksExisted == 1) {
+			this.updateContainerStats(this.getContainer());
+		}
+		
 		super.onLivingUpdate();
 		EntityHelpers.fireOnLivingUpdate(this, this.container.getEntityName());
 	}
@@ -148,7 +166,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 		super.readEntityFromNBT(compound);
 		if(compound.hasKey(KEY_CONTAINER_NAME)) {
 			final String name = compound.getString(KEY_CONTAINER_NAME);
-			this.setContainer(Entities.getEntityContainer(new ResourceLocation(name)));
+			this.setContainer(findContainer(name));
 		}
 		EntityHelpers.fireOnReadNBT(this, this.container.getEntityName(), compound);
 	}
@@ -209,7 +227,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	
 	@Override
 	public void fall(float distance, float damageMultiplier) {
-		if (this.getContainer() != null && this.getContainer().hasFallDamage()) {
+		if (this.getContainer().hasFallDamage()) {
 			// COPY PASTED FROM ENTITYLIVING CLASS
 			float[] ret = net.minecraftforge.common.ForgeHooks.onLivingFall(this, distance, damageMultiplier);
 			if (ret == null) {
@@ -273,7 +291,7 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	}
 	
 	@Override
-	public void setContainer(final EntityContainer containerIn) {
+	public void setContainer(final GolemContainer containerIn) {
 		if(containerIn != null) {
 			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}
@@ -281,6 +299,9 @@ public class EntityCustomGolem extends EntityIronGolem implements IMMDEntity<Ent
 	
 	@Override
 	public GolemContainer getContainer() {
+		if(this.container == GolemContainer.EMPTY_GOLEM_CONTAINER) {
+			this.setContainer(findContainer(this.getDataManager().get(CONTAINER_NAME)));
+		}
 		return this.container;
 	}
 

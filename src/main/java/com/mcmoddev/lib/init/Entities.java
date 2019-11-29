@@ -21,6 +21,7 @@ import com.mcmoddev.lib.entity.EntityCustomMob;
 import com.mcmoddev.lib.entity.GolemContainer;
 import com.mcmoddev.lib.entity.MobContainer;
 import com.mcmoddev.lib.material.MMDMaterial;
+import com.mcmoddev.lib.properties.MMDEntityPropertyBase;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
@@ -28,6 +29,8 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.registry.EntityEntry;
 import net.minecraftforge.fml.common.registry.EntityEntryBuilder;
+import net.minecraftforge.registries.IForgeRegistry;
+import net.minecraftforge.registries.RegistryBuilder;
 
 public class Entities {
 	
@@ -42,16 +45,22 @@ public class Entities {
 	private static final Map<ResourceLocation, EntityContainer> customEntities = new HashMap<>();
 	private static final Collection<EntityEntry> entitiesToRegister = new HashSet<>();
 	
-	public static final String PREFIX_GOLEM = "golem_";	
+	public static final String PREFIX_GOLEM = "golem_";
 	
-	public static void init() {
+	private static boolean frozen = false;
+	
+	public static final void init() {
+		if(frozen) {
+			return;
+		}
 		add(addGolem(GolemContainer.EMPTY_GOLEM_CONTAINER).getEntityClass(), "customgolem");
 		add(addAnimal(AnimalContainer.EMPTY_ANIMAL_CONTAINER).getEntityClass(), "customanimal");
 		add(addMob(MobContainer.EMPTY_MOB_CONTAINER).getEntityClass(), "custommob");
+		frozen = true;
 		// DEBUG / TEST
 		addGolem(GolemContainer.Builder.create(Materials.getMaterialByName(MaterialNames.GOLD)).build());
-		addAnimal(AnimalContainer.Builder.create("test_animal").build());
-		addMob(MobContainer.Builder.create("test_mob").build());
+		//addAnimal(AnimalContainer.Builder.create("test_animal").build());
+		//addMob(MobContainer.Builder.create("test_mob").build());
 		
 	}
 	
@@ -101,7 +110,7 @@ public class Entities {
 		if(null == key || key.toString().isEmpty()) {
 			com.mcmoddev.lib.MMDLib.logger.warn("Skipping invalid String name in AnimalContainer registration.");
 		} else if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register AnimalContainer with name '{}' as it already exists.", key);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register AnimalContainer with name '" + key + "' as it already exists.");
 		} else {
 			customEntities.put(key, container);
 		}		
@@ -118,7 +127,7 @@ public class Entities {
 		if(null == key || key.toString().isEmpty()) {
 			com.mcmoddev.lib.MMDLib.logger.warn("Skipping invalid String name in MobContainer registration.");
 		} else if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register MobContainer with name '{}' as it already exists.", key);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register MobContainer with name '" + key + "' as it already exists.");
 		} else {
 			customEntities.put(key, container);
 		}		
@@ -135,10 +144,10 @@ public class Entities {
 		final String material = container.getMMDMaterial().getName();
 		final ResourceLocation key = container.getEntityName();
 		if(customEntities.containsKey(key)) {
-			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register GolemContainer for MMDMaterial '{}' as it already exists.", material);
+			com.mcmoddev.lib.MMDLib.logger.warn("Cannot register GolemContainer for MMDMaterial '" + material + "' as it already exists.");
 		} else {
 			customEntities.put(key, container);
-			com.mcmoddev.lib.MMDLib.logger.info("Registered GolemContainer with key {}", key);
+			com.mcmoddev.lib.MMDLib.logger.info("Registered GolemContainer with key '" + key + "'");
 		}		
 		return container;
 	}
@@ -152,10 +161,13 @@ public class Entities {
 	 * the material has a valid, registered block.
 	 **/
 	public static final List<MMDMaterial> getGolemMaterials() {
+		// DEBUG
+		System.out.println("registered entities:\n" + Entities.customEntities);
+
 		return customEntities.values().stream()
 				.filter(e -> e instanceof GolemContainer)
 				.map(e -> ((GolemContainer)e).getMMDMaterial())
-				.filter(e -> e.hasBlock(Names.BLOCK))
+				.filter(m -> m.hasBlock(Names.BLOCK))
 				.collect(Collectors.toList());
 	}
 	

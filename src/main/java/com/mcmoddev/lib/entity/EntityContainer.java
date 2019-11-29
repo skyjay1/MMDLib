@@ -48,6 +48,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		this.attack = attackIn;
 		this.walkSpeed = walkSpeedIn;
 		this.knockbackResist = knockbackResistIn;
+		this.setRegistryName(entityNameIn);
 	}
 	
 	public Class<? extends EntityLiving> getEntityClass() { return entityClass; }
@@ -66,6 +67,11 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 	public SoundEvent getHurtSound() { return hurtSound; }
 	@Nullable
 	public SoundEvent getDeathSound() { return deathSound; }
+	
+	@Override
+	public String toString() {
+		return this.getClass().toString() + ", name " + entityName;
+	}
 	
 	/**
 	 * Builder class for {@link EntityContainer}. Uses default values
@@ -98,10 +104,9 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		/** Defaults to null (no sound) **/
 		protected SoundEvent deathSound = null;
 		
-		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
+		protected Builder(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn) {
 			this.entityClass = entityClassIn;
-			final String modid = Loader.instance().activeModContainer().getModId();
-			this.entityName = new ResourceLocation(modid, entityNameIn);
+			this.entityName = entityNameIn;
 		} 
 		
 		/**
@@ -233,7 +238,7 @@ public class EntityContainer extends IForgeRegistryEntry.Impl<EntityContainer> {
 		}
 		
 		public static EntityContainer.Builder create(final Class<? extends EntityLiving> entityClassIn, 
-				final String entityNameIn) {
+				final ResourceLocation entityNameIn) {
 			return new EntityContainer.Builder(entityClassIn, entityNameIn);
 		}
 		

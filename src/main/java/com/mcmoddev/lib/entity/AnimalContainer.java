@@ -1,7 +1,5 @@
 package com.mcmoddev.lib.entity;
 
-import com.mcmoddev.lib.init.Entities;
-
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
@@ -14,7 +12,7 @@ import net.minecraft.util.SoundEvent;
  */
 public class AnimalContainer extends EntityContainer {
 	
-	public static final AnimalContainer EMPTY_ANIMAL_CONTAINER = AnimalContainer.Builder.create("customanimal").build();
+	public static final AnimalContainer EMPTY_ANIMAL_CONTAINER = AnimalContainer.Builder.create("mmdlib", "customanimal").build();
 
 	protected final Item temptItem;
 	
@@ -44,7 +42,7 @@ public class AnimalContainer extends EntityContainer {
 		/** Defaults to null (no tempt item and no mating) **/
 		protected Item temptItem = null;
 		
-		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
+		protected Builder(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn) {
 			super(entityClassIn, entityNameIn);
 			this.setHostility(MobHostility.PASSIVE);
 		} 
@@ -72,8 +70,12 @@ public class AnimalContainer extends EntityContainer {
 					health, attack, walkSpeed, knockbackResist);
 		}
 		
-		public static AnimalContainer.Builder create(final String name) {
+		public static AnimalContainer.Builder create(final ResourceLocation name) {
 			return new AnimalContainer.Builder(EntityCustomAnimal.class, name);
+		}
+		
+		public static AnimalContainer.Builder create(final String modid, final String name) {
+			return create(new ResourceLocation(modid, name));
 		}
 	}
 }

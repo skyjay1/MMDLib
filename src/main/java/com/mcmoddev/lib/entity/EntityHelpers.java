@@ -1,18 +1,22 @@
 package com.mcmoddev.lib.entity;
 
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
+import com.google.common.collect.Sets;
 import com.mcmoddev.lib.MMDLib;
 import com.mcmoddev.lib.data.Names;
 import com.mcmoddev.lib.init.Entities;
 import com.mcmoddev.lib.material.MMDMaterial;
 import com.mcmoddev.lib.properties.EntityProperties;
 import com.mcmoddev.lib.properties.IMMDEntityProperty;
+import com.mcmoddev.lib.properties.MMDEntityPropertyBase;
 
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.block.Block;
@@ -94,6 +98,17 @@ public class EntityHelpers {
 		return true;
 	}
 	
+	public static boolean removeTaskIfPresent(final EntityLiving entity, final Class<? extends EntityAIBase> ai) {
+		int removed = 0;
+		for(final EntityAITaskEntry entry : entity.tasks.taskEntries) {
+			if(entry.action.getClass() == ai) {
+				entity.tasks.removeTask(entry.action);
+				removed++;
+			}
+		}
+		return removed > 0;
+	}
+	
 	@SubscribeEvent
 	public static void registerEntities(final RegistryEvent.Register<EntityEntry> event) {
 		// here we find all the entities that should be registered and... register them!
@@ -102,54 +117,70 @@ public class EntityHelpers {
 		}
 	}
 	
-	/**
-	 * Handles the event where a player might be using a pumpkin itemblock,
-	 * in which case we manually intercept, place the block without any of its
-	 * "can stay here" checks, and attempt to spawn a golem using the blocks
-	 * if any are detected. 
-	 * <br>Author: skyjay1
-	 * <br>From: Extra Golems 12.2
-	 * <br>Used with permission.
-	 **/
+	// DEBUG
 	@SubscribeEvent
-	public static void onPlacePumpkin(PlayerInteractEvent.RightClickBlock event) {
-		ItemStack stack = event.getItemStack();
-		// check qualifications for running this event...
-		if(!event.isCanceled() && !stack.isEmpty() && stack.getItem() instanceof ItemBlock) {
-			Block heldBlock = ((ItemBlock)stack.getItem()).getBlock();
-			// if player is holding pumpkin or lit pumpkin, start to place the block manually
-			if(heldBlock instanceof BlockPumpkin) {
-				// update the location to place block
-				BlockPos pumpkinPos = event.getPos();
-				Block clicked = event.getWorld().getBlockState(pumpkinPos).getBlock();
-				if (!clicked.isReplaceable(event.getWorld(), pumpkinPos)) {
-		            pumpkinPos = pumpkinPos.offset(event.getFace());
-				}
-				// now we're ready to place the block
-				if(event.getEntityPlayer().canPlayerEdit(pumpkinPos, event.getFace(), stack)) {
-					IBlockState pumpkin = heldBlock.getDefaultState().withProperty(BlockHorizontal.FACING, 
-							event.getEntityPlayer().getHorizontalFacing().getOpposite());
-					// set block and trigger golem-checking
-					if(event.getWorld().setBlockState(pumpkinPos, pumpkin)) {
-						// cancel event and reduce itemstack
-						event.setCanceled(true);
-						if(!event.getEntityPlayer().isCreative()) {
-							event.getItemStack().shrink(1);
-						}
-						// spawn the golem (if a match is found)
-						if(!event.getWorld().isRemote) {
-							EntityCustomGolem golem = trySpawnGolem(event.getWorld(), pumpkinPos);
-							if(golem != null) {
-								// location, container, etc. were set in #trySpawnGolem
-								event.getWorld().spawnEntity(golem);
-							}
-						}
-					}
-				}
+	public static void registerEntityProperties(final com.mcmoddev.lib.events.MMDLibRegisterEntityProperties event) {
+		event.getRegistry().register(new MMDEntityPropertyBase("prop") {
+
+			@Override
+			public void onAttackMob(EntityLiving entity, Entity target) {
+				System.out.println("on Attack Mob");
 			}
-		}
+
+			@Override
+			public void onHurt(EntityLiving entity, DamageSource source, float amount) {
+				System.out.println("on Hurt");
+			}
+
+			@Override
+			public void onPlayerInteract(EntityLiving entity, EntityPlayer player, EnumHand hand) {
+				System.out.println("on Player Interact");
+			}
+
+			@Override
+			public void onInitAI(EntityLiving entity) {
+				System.out.println("on Init AI");
+			}
+
+//			@Override
+//			public void onTick(EntityLiving entity) {
+//				System.out.println("on Tick");
+//			}
+
+			@Override
+			public void onDeath(EntityLiving entity, DamageSource cause) {
+				System.out.println("on Death");
+			}
+
+			@Override
+			public void onFirstSpawned(EntityLiving entity) {
+				System.out.println("on First Spawned");
+			}
+
+			@Override
+			public void onWriteNBT(EntityLiving entity, NBTTagCompound tag) {
+				System.out.println("on Write NBT");
+			}
+
+			@Override
+			public void onReadNBT(EntityLiving entity, NBTTagCompound tag) {
+				System.out.println("on Read NBT");
+			}
+
+			@Override
+			public Set<ResourceLocation> getHandledEntities() {
+				return Sets.newHashSet(new ResourceLocation("mmdlib", "golem_gold"));
+			}
+
+			@Override
+			public Set<ListenerType> getListenerTypes() {
+				return EnumSet.of(ListenerType.AI, ListenerType.ATTACK, ListenerType.DEATH, ListenerType.HURT,
+						ListenerType.INTERACT, ListenerType.NBT, ListenerType.SPAWN, ListenerType.TICK);
+			}
+			
+		});
 	}
-		
+	
 	/**
 	 * AFTER all Entity update code has been processed.
 	 **/
@@ -218,6 +249,54 @@ public class EntityHelpers {
 		EntityProperties.getListeners(name, IMMDEntityProperty.ListenerType.SPAWN)
 			.forEach(p -> p.onFirstSpawned(entity));
 	}
+	
+	/**
+	 * Handles the event where a player might be using a pumpkin itemblock,
+	 * in which case we manually intercept, place the block without any of its
+	 * "can stay here" checks, and attempt to spawn a golem using the blocks
+	 * if any are detected. 
+	 * <br>Author: skyjay1
+	 * <br>From: Extra Golems 12.2
+	 * <br>Used with permission.
+	 **/
+	@SubscribeEvent
+	public static void onPlacePumpkin(PlayerInteractEvent.RightClickBlock event) {
+		ItemStack stack = event.getItemStack();
+		// check qualifications for running this event...
+		if(!event.isCanceled() && !stack.isEmpty() && stack.getItem() instanceof ItemBlock) {
+			Block heldBlock = ((ItemBlock)stack.getItem()).getBlock();
+			// if player is holding pumpkin or lit pumpkin, start to place the block manually
+			if(heldBlock instanceof BlockPumpkin) {
+				// update the location to place block
+				BlockPos pumpkinPos = event.getPos();
+				Block clicked = event.getWorld().getBlockState(pumpkinPos).getBlock();
+				if (!clicked.isReplaceable(event.getWorld(), pumpkinPos)) {
+		            pumpkinPos = pumpkinPos.offset(event.getFace());
+				}
+				// now we're ready to place the block
+				if(event.getEntityPlayer().canPlayerEdit(pumpkinPos, event.getFace(), stack)) {
+					IBlockState pumpkin = heldBlock.getDefaultState().withProperty(BlockHorizontal.FACING, 
+							event.getEntityPlayer().getHorizontalFacing().getOpposite());
+					// set block and trigger golem-checking
+					if(event.getWorld().setBlockState(pumpkinPos, pumpkin)) {
+						// cancel event and reduce itemstack
+						event.setCanceled(true);
+						if(!event.getEntityPlayer().isCreative()) {
+							event.getItemStack().shrink(1);
+						}
+						// spawn the golem (if a match is found)
+						if(!event.getWorld().isRemote) {
+							EntityCustomGolem golem = trySpawnGolem(event.getWorld(), pumpkinPos);
+							if(golem != null) {
+								// location, container, etc. were set in #trySpawnGolem
+								event.getWorld().spawnEntity(golem);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 
 	/**
 	 * Adapted from BlockPumpkin code
@@ -252,9 +331,13 @@ public class EntityHelpers {
 			entitycustomgolem.setPlayerCreated(true);
 			entitycustomgolem.setLocationAndAngles((double) blockpos.getX() + 0.5D, (double) blockpos.getY() + 0.05D,
 					(double) blockpos.getZ() + 0.5D, 0.0F, 0.0F);
-			final ResourceLocation key = new ResourceLocation(material.getRegistryName().getNamespace(), 
-					Entities.PREFIX_GOLEM.concat(material.getName()));
+			final ResourceLocation key = new ResourceLocation("mmdlib", Entities.PREFIX_GOLEM.concat(material.getName()));
+			
+			// DEBUG:
+			System.out.println("looking for entity container with name '" + key + "'...");
+			
 			if (Entities.hasEntityContainer(key)) {
+				System.out.println("...found!");
 				entitycustomgolem.setContainer(Entities.getEntityContainer(key));
 			} else {
 				com.mcmoddev.lib.MMDLib.logger
@@ -294,6 +377,8 @@ public class EntityHelpers {
 			for (final MMDMaterial mat : Entities.getGolemMaterials()) {
 				golemPatterns.put(mat, makeGolemPattern(mat.getBlock(Names.BLOCK)));
 			}
+			// DEBUG:
+			System.out.println("initialized golemPatterns:\n" + golemPatterns);
 		}
 		return golemPatterns;
 	}

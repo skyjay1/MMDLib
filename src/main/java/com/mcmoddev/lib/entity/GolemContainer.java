@@ -70,6 +70,11 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 	@Override
 	public MMDMaterial getMMDMaterial() { return this.material; }
 	
+	@Override
+	public String toString() {
+		return super.toString() + ", material " + this.material.getName();
+	}
+	
 	/**
 	 * Builder class for {@link GolemContainer}. Uses default values
 	 * for important stats for the custom golem:  material, texture,
@@ -86,8 +91,8 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		/** Defaults to false **/
 		protected boolean fallDamage = false;
 		
-		public Builder(final MMDMaterial mat) {
-			super(EntityCustomGolem.class, Entities.PREFIX_GOLEM.concat(mat.getName()));
+		protected Builder(final MMDMaterial mat, final ResourceLocation nameIn) {
+			super(EntityCustomGolem.class, nameIn);
 			// set defaults
 			this.material = mat;
 			this.knockbackResist = 0.8D;
@@ -156,7 +161,8 @@ public final class GolemContainer extends EntityContainer implements IMMDObject 
 		}
 		
 		public static GolemContainer.Builder create(final MMDMaterial materialIn) {
-			return new GolemContainer.Builder(materialIn);
+			return new GolemContainer.Builder(materialIn, 
+					new ResourceLocation("mmdlib", Entities.PREFIX_GOLEM.concat(materialIn.getName())));
 		}
 		
 		/**

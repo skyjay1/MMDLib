@@ -129,10 +129,10 @@ repositories {
     name 'DVS1 Maven FS'
     url 'http://dvs1.progwml6.com/files/maven/'
   }
-  maven { // CCL, CCC, NEI
-    name 'Chickenbones Repo'
-    url 'http://chickenbones.net/maven/'
-  }
+  //maven { // CCL, CCC, NEI
+  //  name 'Chickenbones Repo'
+  //  url 'http://chickenbones.net/maven/'
+  //}
   maven { // The One Probe, EnderIO, EnderCore
     name 'tterrag'
     url 'http://maven.tterrag.com/'
@@ -200,11 +200,11 @@ dependencies {
         exclude group: 'mezz.jei'
     }
 	
-    deobfProvided "codechicken:CodeChickenLib:${mc_version}-${ccl_version}:universal"
-    deobfProvided ("codechicken:NotEnoughItems:${mc_version}-${nei_version}:universal") {
-        exclude group: 'mezz.jei'
-        exclude group: 'codechicken'
-    }
+    //deobfProvided "codechicken:CodeChickenLib:${mc_version}-${ccl_version}:universal"
+    //deobfProvided ("codechicken:NotEnoughItems:${mc_version}-${nei_version}:universal") {
+    //    exclude group: 'mezz.jei'
+    //    exclude group: 'codechicken'
+    //}
 
     deobfProvided ("net.industrial-craft:industrialcraft-2:${ic2_version}:api") {
         exclude group: 'mezz.jei'

@@ -34,11 +34,11 @@ import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.World;
 import net.minecraft.world.storage.loot.LootTableList;
 
-public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<EntityCustomAnimal> {
+public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<EntityCustomAnimal, AnimalContainer> {
 
 	protected static final DataParameter<String> CONTAINER_NAME = EntityDataManager.<String>createKey(EntityCustomAnimal.class, DataSerializers.STRING);
-	private static final String KEY_CONTAINER_NAME = "ContainerName";
-	private EntityContainer container = AnimalContainer.EMPTY_ANIMAL_CONTAINER;
+	private static final String KEY_CONTAINER_NAME = "containername";
+	private AnimalContainer container = AnimalContainer.EMPTY_ANIMAL_CONTAINER;
 	
 	public EntityCustomAnimal(World worldIn) {
 		super(worldIn);
@@ -198,14 +198,14 @@ public class EntityCustomAnimal extends EntityAnimal implements IMMDEntity<Entit
 	}
 
 	@Override
-	public void setContainer(EntityContainer containerIn) {
+	public void setContainer(final AnimalContainer containerIn) {
 		if(containerIn != null) {
 			this.getDataManager().set(CONTAINER_NAME, containerIn.getEntityName().toString());
 		}
 	}
 
 	@Override
-	public EntityContainer getContainer() {
+	public AnimalContainer getContainer() {
 		return this.container;
 	}
 

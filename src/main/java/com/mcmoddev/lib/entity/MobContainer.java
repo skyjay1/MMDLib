@@ -1,7 +1,5 @@
 package com.mcmoddev.lib.entity;
 
-import com.mcmoddev.lib.init.Entities;
-
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.SoundEvent;
@@ -13,7 +11,7 @@ import net.minecraft.util.SoundEvent;
  */
 public class MobContainer extends EntityContainer {
 	
-	public static final MobContainer EMPTY_MOB_CONTAINER = MobContainer.Builder.create("custommob").build();
+	public static final MobContainer EMPTY_MOB_CONTAINER = MobContainer.Builder.create("mmdlib", "custommob").build();
 
 	protected final boolean burnInDay;
 	protected final boolean leapsAtTarget;
@@ -48,7 +46,7 @@ public class MobContainer extends EntityContainer {
 		/** Defaults to false (touch of death, not leap) **/
 		protected boolean leapsAtTarget = false;
 		
-		protected Builder(final Class<? extends EntityLiving> entityClassIn, final String entityNameIn) {
+		protected Builder(final Class<? extends EntityLiving> entityClassIn, final ResourceLocation entityNameIn) {
 			super(entityClassIn, entityNameIn);
 			this.attitude = MobHostility.HOSTILE;
 		} 
@@ -84,8 +82,12 @@ public class MobContainer extends EntityContainer {
 					health, attack, walkSpeed, knockbackResist);
 		}
 		
-		public static MobContainer.Builder create(final String name) {
-			return new MobContainer.Builder(EntityCustomAnimal.class, name);
+		public static MobContainer.Builder create(final ResourceLocation name) {
+			return new MobContainer.Builder(EntityCustomMob.class, name);
+		}
+		
+		public static MobContainer.Builder create(final String modid, final String name) {
+			return create(new ResourceLocation(modid, name));
 		}
 	}
 }
